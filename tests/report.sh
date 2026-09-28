@@ -66,7 +66,11 @@ PYTHON=$(command -v python3)
 "$PYTHON" "$WORK/stub.py" "$WORK/port" "$WORK/requests.log" &
 stub_pid=$!
 trap 'kill $stub_pid 2>/dev/null; rm -rf "$WORK"' EXIT
-for _ in $(seq 1 50); do [ -s "$WORK/port" ] && break; sleep 0.1; done
+for _ in $(seq 1 300); do [ -s "$WORK/port" ] && break; sleep 0.1; done
+if [ ! -s "$WORK/port" ]; then
+  echo "The stub LangSmith API did not start within 30 seconds." >&2
+  exit 1
+fi
 ENDPOINT="http://127.0.0.1:$(cat "$WORK/port")"
 
 report() {
