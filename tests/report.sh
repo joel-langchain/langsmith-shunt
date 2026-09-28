@@ -62,7 +62,8 @@ open(sys.argv[1], "w").write(str(srv.server_port))
 srv.serve_forever()
 PY
 
-python3 "$WORK/stub.py" "$WORK/port" "$WORK/requests.log" &
+PYTHON=$(command -v python3)
+"$PYTHON" "$WORK/stub.py" "$WORK/port" "$WORK/requests.log" &
 stub_pid=$!
 trap 'kill $stub_pid 2>/dev/null; rm -rf "$WORK"' EXIT
 for _ in $(seq 1 50); do [ -s "$WORK/port" ] && break; sleep 0.1; done
@@ -70,7 +71,7 @@ ENDPOINT="http://127.0.0.1:$(cat "$WORK/port")"
 
 report() {
   env -i PATH="/usr/bin:/bin" LANGSMITH_ENDPOINT="$ENDPOINT" SHUNT_LANGSMITH_API_KEY=test-key "$@" \
-    python3 "$SHUNT/scripts/savings-report" "${REPORT_ARGS[@]}" >"$WORK/out" 2>"$WORK/err"
+    "$PYTHON" "$SHUNT/scripts/savings-report" ${REPORT_ARGS[@]+"${REPORT_ARGS[@]}"} >"$WORK/out" 2>"$WORK/err"
   rc=$?
 }
 field() { jq -r --arg s "$1" ".sessions[] | select(.session == \$s) | .$2" "$WORK/out"; }
@@ -79,6 +80,7 @@ echo "savings-report"
 REPORT_ARGS=(--json)
 report
 assert "exits 0" [ "$rc" -eq 0 ]
+[ "$rc" -eq 0 ] || sed 's/^/        stderr: /' "$WORK/err"
 assert "follows the pagination cursor" [ "$(grep -c '"cursor": "page2"' "$WORK/requests.log")" -eq 1 ]
 assert "sends the key" contains "$WORK/requests.log" "key=test-key"
 assert "filters delegations by tag" contains "$WORK/requests.log" 'has(tags, \"langsmith-shunt\")'
