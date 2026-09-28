@@ -1,7 +1,7 @@
 {
   "name": "langsmith-shunt",
   "displayName": "LangSmith Shunt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hooks stop Claude from reading large files into context and send them to a cheaper model through the LangSmith LLM Gateway instead. Every delegation is a LangSmith run, so the tokens saved are measured from traces.",
   "author": {
     "name": "Joel Strickland"

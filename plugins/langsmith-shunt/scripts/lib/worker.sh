@@ -9,7 +9,7 @@
 # Every call stands alone. Nothing is kept between calls, and a follow-up
 # question re-sends the files, which costs the worker tokens but not Claude's.
 
-SHUNT_VERSION="0.1.0"
+SHUNT_VERSION="0.1.1"
 
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT%/}"
@@ -157,8 +157,16 @@ shunt_call() {
   fi
 
   if [ "$status" != 200 ]; then
-    err=$(jq -r '.error.message // .error // .detail // empty' "$response" 2>/dev/null)
+    # JSON errors carry the message in a field; the gateway also answers some
+    # errors in plain text, such as "missing permission gateway:invoke".
+    err=$(jq -r '.error.message // .error // .detail // .message // empty' "$response" 2>/dev/null) ||
+      err=$(head -c 300 "$response" | tr '\n' ' ')
     echo "Error: $url returned HTTP $status${err:+: $err}" >&2
+    case "$status:$err" in
+      403:*gateway:invoke*)
+        echo "The key has no permission to call the LLM Gateway. Set SHUNT_API_KEY to a LangSmith key that does, or set SHUNT_BASE_URL and SHUNT_API_KEY to call the provider directly." >&2
+        ;;
+    esac
     return 1
   fi
 

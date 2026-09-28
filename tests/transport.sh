@@ -50,6 +50,8 @@ ANTHROPIC_CUT="$WORK/anthropic-cut.json"
 echo '{"content":[{"type":"text","text":"- partial"}],"usage":{"input_tokens":10,"output_tokens":8192},"stop_reason":"max_tokens"}' >"$ANTHROPIC_CUT"
 OPENAI_OK="$WORK/openai-ok.json"
 echo '{"choices":[{"message":{"content":"- from openai"},"finish_reason":"stop"}],"usage":{"prompt_tokens":777,"completion_tokens":7}}' >"$OPENAI_OK"
+ERROR_403_TEXT="$WORK/error-403.txt"
+printf 'missing permission gateway:invoke' >"$ERROR_403_TEXT"
 ERROR_401="$WORK/error.json"
 echo '{"error":{"type":"authentication_error","message":"invalid x-api-key"}}' >"$ERROR_401"
 
@@ -144,6 +146,10 @@ run bulk-read "$ERROR_401" STUB_MODEL_STATUS=401 -- --question q --paths "$WORK/
 assert "HTTP 401 exits non-zero" [ "$rc" -ne 0 ]
 assert "HTTP 401 shows the provider message" contains "$WORK/err" "HTTP 401: invalid x-api-key"
 assert "HTTP 401 records no run" [ "$(calls)" -eq 1 ]
+
+run bulk-read "$ERROR_403_TEXT" STUB_MODEL_STATUS=403 -- --question q --paths "$WORK/big.ts"
+assert "plain-text error body is shown" contains "$WORK/err" "HTTP 403: missing permission gateway:invoke"
+assert "missing gateway permission gets a fix" contains "$WORK/err" "no permission to call the LLM Gateway"
 
 run bulk-read "$ANTHROPIC_CUT" -- --question q --paths "$WORK/big.ts"
 assert "max_tokens stop warns" contains "$WORK/err" "cut off"
