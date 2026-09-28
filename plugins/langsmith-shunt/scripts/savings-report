@@ -52,6 +52,12 @@ def request(method: str, path: str, body: dict | None = None, params: dict | Non
             return json.load(resp)
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:300]
+        if e.code == 403 and "runs:read" in detail:
+            sys.exit(
+                "Error: this key can record runs but not read them (missing runs:read). "
+                "Set SHUNT_LANGSMITH_API_KEY to a key that can read the project, "
+                "for example one from the same workspace with a read role."
+            )
         sys.exit(f"Error: {method} {path} returned HTTP {e.code}: {detail}")
     except urllib.error.URLError as e:
         sys.exit(f"Error: could not reach {ENDPOINT}: {e.reason}")

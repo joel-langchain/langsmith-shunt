@@ -48,6 +48,10 @@ class H(BaseHTTPRequestHandler):
         self.reply([] if name == "missing" else [{"id": "proj-1", "name": name}])
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+        if self.headers.get("x-api-key") == "write-only":
+            data = b'{"status":403,"detail":"Permission denied, you do not have the required permissions for this resource: runs:read"}'
+            self.send_response(403); self.send_header("content-length", str(len(data))); self.end_headers(); self.wfile.write(data)
+            return
         with open(sys.argv[2], "a") as log: log.write(f"POST {self.path} {json.dumps(body)}\n")
         f = body.get("filter", "")
         if body.get("run_type") == "llm":
@@ -119,5 +123,9 @@ assert "unknown project says so" contains "$WORK/err" "no LangSmith project name
 REPORT_ARGS=()
 report SHUNT_LANGSMITH_API_KEY=
 assert "no key exits non-zero" [ "$rc" -ne 0 ]
+
+report SHUNT_LANGSMITH_API_KEY=write-only
+assert "write-only key exits non-zero" [ "$rc" -ne 0 ]
+assert "write-only key explains runs:read" contains "$WORK/err" "can record runs but not read them"
 
 summary

@@ -141,6 +141,37 @@ run bulk-read "$ANTHROPIC_OK" SHUNT_BASE_URL=https://api.anthropic.com -- --ques
 assert "SHUNT_BASE_URL replaces the gateway" [ "$(cat "$WORK/calls/url.1")" = "https://api.anthropic.com/v1/messages" ]
 
 echo
+echo "bulk-read, Claude Code's gateway settings"
+CC_GW=https://gateway.smith.langchain.com/anthropic
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= ANTHROPIC_BASE_URL="$CC_GW/" ANTHROPIC_CUSTOM_HEADERS="X-Api-Key: cc-gateway-key" -- --question q --paths "$WORK/big.ts"
+assert "uses Claude Code's gateway address" [ "$(cat "$WORK/calls/url.1")" = "$CC_GW/v1/messages" ]
+assert "sends Claude Code's custom headers" contains "$WORK/calls/headers.1" "X-Api-Key: cc-gateway-key"
+assert "adds no second key header" [ "$(grep -ci '^x-api-key' "$WORK/calls/headers.1")" -eq 1 ]
+assert "keeps the gateway key out of argv" not_contains "$WORK/calls/argv.1" "cc-gateway-key"
+assert "run records the key source" [ "$(body 2 | jq -r .extra.metadata.shunt_key_source)" = claude-code-gateway ]
+
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= ANTHROPIC_BASE_URL=https://eu.gateway.smith.langchain.com/anthropic ANTHROPIC_CUSTOM_HEADERS="X-Api-Key: cc-gateway-key" -- --question q --paths "$WORK/big.ts"
+assert "follows an EU gateway address" [ "$(cat "$WORK/calls/url.1")" = "https://eu.gateway.smith.langchain.com/anthropic/v1/messages" ]
+
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= ANTHROPIC_BASE_URL="$CC_GW" ANTHROPIC_API_KEY=cc-api-key -- --question q --paths "$WORK/big.ts"
+assert "falls back to ANTHROPIC_API_KEY" contains "$WORK/calls/headers.1" "x-api-key: cc-api-key"
+
+run bulk-read "$ANTHROPIC_OK" ANTHROPIC_BASE_URL="$CC_GW" ANTHROPIC_CUSTOM_HEADERS="X-Api-Key: cc-gateway-key" -- --question q --paths "$WORK/big.ts"
+assert "SHUNT_API_KEY wins over Claude Code's key" contains "$WORK/calls/headers.1" "x-api-key: test-worker-key"
+assert "SHUNT_API_KEY sends no Claude Code headers" not_contains "$WORK/calls/headers.1" "cc-gateway-key"
+
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= ANTHROPIC_BASE_URL=https://proxy.example.com ANTHROPIC_CUSTOM_HEADERS="X-Api-Key: other" LANGSMITH_API_KEY=ls-key -- --question q --paths "$WORK/big.ts"
+assert "ignores a non-gateway ANTHROPIC_BASE_URL" [ "$(cat "$WORK/calls/url.1")" = "$CC_GW/v1/messages" ]
+assert "uses LANGSMITH_API_KEY then" contains "$WORK/calls/headers.1" "x-api-key: ls-key"
+
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= ANTHROPIC_BASE_URL="$CC_GW" -- --question q --paths "$WORK/big.ts"
+assert "gateway with no Claude Code key fails" [ "$rc" -ne 0 ]
+assert "gateway with no Claude Code key makes no request" [ "$(calls)" -eq 0 ]
+
+run bulk-read "$ANTHROPIC_OK" SHUNT_API_KEY= CC_LANGSMITH_API_KEY=tracing-key -- --question q --paths "$WORK/big.ts"
+assert "never uses the tracing key for the worker" [ "$rc" -ne 0 ]
+
+echo
 echo "bulk-read, errors"
 run bulk-read "$ERROR_401" STUB_MODEL_STATUS=401 -- --question q --paths "$WORK/big.ts"
 assert "HTTP 401 exits non-zero" [ "$rc" -ne 0 ]

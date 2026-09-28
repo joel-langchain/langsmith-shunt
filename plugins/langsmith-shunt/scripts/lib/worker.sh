@@ -9,7 +9,7 @@
 # Every call stands alone. Nothing is kept between calls, and a follow-up
 # question re-sends the files, which costs the worker tokens but not Claude's.
 
-SHUNT_VERSION="0.1.1"
+SHUNT_VERSION="0.1.2"
 
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT%/}"
@@ -18,6 +18,8 @@ case "$LANGSMITH_ENDPOINT" in
   *eu.api.smith.langchain.com*) shunt_gateway="https://eu.gateway.smith.langchain.com" ;;
   *) shunt_gateway="https://gateway.smith.langchain.com" ;;
 esac
+
+shunt_user_base_url="${SHUNT_BASE_URL:-}"
 
 SHUNT_PROVIDER="${SHUNT_PROVIDER:-anthropic}"
 case "$SHUNT_PROVIDER" in
@@ -36,9 +38,27 @@ case "$SHUNT_PROVIDER" in
 esac
 SHUNT_BASE_URL="${SHUNT_BASE_URL%/}"
 
-# Key for the worker model. Through the gateway this is a LangSmith API key
-# whose workspace has the provider secret configured.
-SHUNT_API_KEY="${SHUNT_API_KEY:-${LANGSMITH_API_KEY:-${CC_LANGSMITH_API_KEY:-}}}"
+# Key for the worker model, first match wins:
+#   1. SHUNT_API_KEY, sent to SHUNT_BASE_URL (default: the LangSmith Gateway).
+#   2. Claude Code's own settings, when ANTHROPIC_BASE_URL is the LangSmith
+#      Gateway: the worker goes to the same address with the same headers, so
+#      a Claude Code that already runs through the gateway needs nothing more.
+#   3. LANGSMITH_API_KEY, sent to the LangSmith Gateway.
+# The tracing key (CC_LANGSMITH_API_KEY) is not used: it is often scoped to
+# writing runs and cannot call the gateway.
+SHUNT_KEY_SOURCE=""
+SHUNT_USE_CLAUDE_CODE_AUTH=""
+if [ -n "${SHUNT_API_KEY:-}" ]; then
+  SHUNT_KEY_SOURCE="SHUNT_API_KEY"
+elif [ "$SHUNT_PROVIDER" = anthropic ] && [[ "${ANTHROPIC_BASE_URL:-}" == *gateway.smith.langchain.com* ]]; then
+  SHUNT_KEY_SOURCE="claude-code-gateway"
+  SHUNT_USE_CLAUDE_CODE_AUTH=1
+  SHUNT_BASE_URL="${shunt_user_base_url:-${ANTHROPIC_BASE_URL%/}}"
+elif [ -n "${LANGSMITH_API_KEY:-}" ]; then
+  SHUNT_API_KEY="$LANGSMITH_API_KEY"
+  SHUNT_KEY_SOURCE="LANGSMITH_API_KEY"
+fi
+SHUNT_API_KEY="${SHUNT_API_KEY:-}"
 
 # Key and project for the delegation runs. Defaults match the
 # langsmith-tracing plugin so both land in one project.
@@ -71,14 +91,46 @@ shunt_preflight() {
     echo "Error: missing required command(s):$missing" >&2
     return 1
   fi
-  if [ -z "$SHUNT_API_KEY" ]; then
-    echo "Error: no key for the worker model. Set SHUNT_API_KEY, or LANGSMITH_API_KEY to use the LangSmith LLM Gateway." >&2
+  if [ -n "$SHUNT_USE_CLAUDE_CODE_AUTH" ] && ! shunt_claude_code_has_auth; then
+    echo "Error: ANTHROPIC_BASE_URL is the LangSmith Gateway but no key was found in ANTHROPIC_CUSTOM_HEADERS, ANTHROPIC_API_KEY, or ANTHROPIC_AUTH_TOKEN. Set SHUNT_API_KEY." >&2
+    return 1
+  fi
+  if [ -z "$SHUNT_USE_CLAUDE_CODE_AUTH" ] && [ -z "$SHUNT_API_KEY" ]; then
+    echo "Error: no key for the worker model. Set SHUNT_API_KEY, or LANGSMITH_API_KEY to use the LangSmith LLM Gateway. If Claude Code itself runs through the gateway, its key is used automatically." >&2
     return 1
   fi
   if [ -z "$SHUNT_MODEL" ]; then
     echo "Error: SHUNT_MODEL is required when SHUNT_PROVIDER=openai." >&2
     return 1
   fi
+}
+
+# Claude Code's custom headers, one "Name: value" per line.
+shunt_claude_code_header_lines() {
+  printf '%s\n' "${ANTHROPIC_CUSTOM_HEADERS:-}" | tr -d '\r' | grep ':' || true
+}
+
+shunt_claude_code_has_auth() {
+  shunt_claude_code_header_lines | grep -qiE '^[[:space:]]*(x-api-key|authorization):' ||
+    [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]
+}
+
+# Writes the headers Claude Code itself sends to the gateway.
+#   $1 output file
+shunt_claude_code_headers() {
+  local out="$1" lines
+  lines=$(shunt_claude_code_header_lines)
+  {
+    printf '%s\n' "anthropic-version: 2023-06-01" "content-type: application/json"
+    [ -n "$lines" ] && printf '%s\n' "$lines"
+    if ! grep -qiE '^[[:space:]]*(x-api-key|authorization):' <<<"$lines"; then
+      if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+        printf 'x-api-key: %s\n' "$ANTHROPIC_API_KEY"
+      elif [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+        printf 'authorization: Bearer %s\n' "$ANTHROPIC_AUTH_TOKEN"
+      fi
+    fi
+  } >"$out"
 }
 
 shunt_uuid() {
@@ -123,7 +175,11 @@ shunt_call() {
 
   if [ "$SHUNT_PROVIDER" = anthropic ]; then
     url="$SHUNT_BASE_URL/v1/messages"
-    shunt_headers "$headers" "x-api-key: $SHUNT_API_KEY" "anthropic-version: 2023-06-01" "content-type: application/json"
+    if [ -n "$SHUNT_USE_CLAUDE_CODE_AUTH" ]; then
+      shunt_claude_code_headers "$headers"
+    else
+      shunt_headers "$headers" "x-api-key: $SHUNT_API_KEY" "anthropic-version: 2023-06-01" "content-type: application/json"
+    fi
     jq -n \
       --arg model "$SHUNT_MODEL" \
       --argjson max_tokens "$SHUNT_MAX_TOKENS" \
@@ -221,7 +277,7 @@ shunt_trace() {
     --arg project "$SHUNT_LANGSMITH_PROJECT" \
     --arg thread "${CLAUDE_CODE_SESSION_ID:-}" \
     --arg provider "$SHUNT_PROVIDER" --arg model "$SHUNT_MODEL" \
-    --arg version "$SHUNT_VERSION" \
+    --arg version "$SHUNT_VERSION" --arg key_source "$SHUNT_KEY_SOURCE" \
     --slurpfile inputs "$inputs_file" --slurpfile outputs "$outputs_file" \
     --argjson input_tokens "${SHUNT_INPUT_TOKENS:-0}" \
     --argjson output_tokens "${SHUNT_OUTPUT_TOKENS:-0}" \
@@ -240,7 +296,8 @@ shunt_trace() {
       extra: {metadata: ({
         ls_provider: $provider,
         ls_model_name: $model,
-        shunt_version: $version
+        shunt_version: $version,
+        shunt_key_source: $key_source
       } + (if $thread == "" then {} else {thread_id: $thread} end))}
     }' >"$body" || return 0
 

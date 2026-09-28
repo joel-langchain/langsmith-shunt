@@ -14,17 +14,19 @@ claude plugin marketplace add joel-langchain/langsmith-shunt
 claude plugin install langsmith-shunt@langsmith-shunt
 ```
 
-Then add a key to the `env` block of `~/.claude/settings.json`, or of `.claude/settings.local.json` for one project:
+If Claude Code already runs through the LangSmith LLM Gateway (`ANTHROPIC_BASE_URL` is the gateway), the worker uses the same address and key, and there is nothing to set.
+
+Otherwise, add a key to the `env` block of `~/.claude/settings.json`, or of `.claude/settings.local.json` for one project:
 
 ```json
 {
   "env": {
-    "LANGSMITH_API_KEY": "<LangSmith API key>"
+    "SHUNT_API_KEY": "<LangSmith API key with gateway access>"
   }
 }
 ```
 
-Through the gateway, the key's workspace needs an Anthropic provider secret. The LLM Gateway is not on the free Developer plan. Without it, call the Anthropic API directly:
+The key needs permission to call the gateway, and its workspace needs an Anthropic provider secret. A tracing-only key usually has neither, so the plugin never uses `CC_LANGSMITH_API_KEY` for the worker. The LLM Gateway is not on the free Developer plan. Without it, call the Anthropic API directly:
 
 ```json
 {
@@ -36,7 +38,7 @@ Through the gateway, the key's workspace needs an Anthropic provider secret. The
 }
 ```
 
-If you already use LangChain's [langsmith-tracing](https://github.com/langchain-ai/langsmith-claude-code-plugins) plugin, langsmith-shunt reuses its `CC_LANGSMITH_API_KEY` and `CC_LANGSMITH_PROJECT`, and the savings report can compare delegations with the rest of the session.
+If you already use LangChain's [langsmith-tracing](https://github.com/langchain-ai/langsmith-claude-code-plugins) plugin, langsmith-shunt records its runs with the same `CC_LANGSMITH_API_KEY` into the same `CC_LANGSMITH_PROJECT`, and the savings report can compare delegations with the rest of the session. The report needs to read runs, which a tracing key may not allow; set `SHUNT_LANGSMITH_API_KEY` to a key with read access if it says so.
 
 ## How it works
 
@@ -100,8 +102,8 @@ Set these in the same `env` block.
 | `SHUNT_DISABLED` | unset | `1` or `true` turns the hooks off |
 | `SHUNT_PROVIDER` | `anthropic` | `anthropic` or `openai` API format |
 | `SHUNT_MODEL` | `claude-haiku-4-5-20251001` | Worker model. Required for `openai` |
-| `SHUNT_BASE_URL` | LLM Gateway for the provider | For example `https://api.anthropic.com` to skip the gateway |
-| `SHUNT_API_KEY` | `LANGSMITH_API_KEY`, then `CC_LANGSMITH_API_KEY` | Worker key. Through the gateway this is a LangSmith key whose workspace has the provider secret |
+| `SHUNT_BASE_URL` | Claude Code's `ANTHROPIC_BASE_URL` when it is the gateway, else the LLM Gateway for the provider | For example `https://api.anthropic.com` to skip the gateway |
+| `SHUNT_API_KEY` | Claude Code's own gateway key when `ANTHROPIC_BASE_URL` is the LangSmith Gateway, then `LANGSMITH_API_KEY` | Worker key. Through the gateway this is a LangSmith key with gateway access whose workspace has the provider secret |
 | `SHUNT_LANGSMITH_API_KEY` | `CC_LANGSMITH_API_KEY`, then `LANGSMITH_API_KEY` | Key for recording runs |
 | `SHUNT_LANGSMITH_PROJECT` | `CC_LANGSMITH_PROJECT`, then `LANGSMITH_PROJECT`, then `claude-code` | Project for the runs |
 | `SHUNT_TRACE` | `true` | `false` stops recording runs |
