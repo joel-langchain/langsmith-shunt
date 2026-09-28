@@ -7,11 +7,11 @@ The design follows Spotify's [shunt](https://github.com/spotify/portal-ai-plugin
 ## Install
 
 ```bash
-claude plugin marketplace add joel-langchain/langsmith-claude-code
+claude plugin marketplace add joel-langchain/langsmith-shunt
 ```
 
 ```bash
-claude plugin install langsmith-shunt@langsmith-claude-code
+claude plugin install langsmith-shunt@langsmith-shunt
 ```
 
 Then add a key to the `env` block of `~/.claude/settings.json`, or of `.claude/settings.local.json` for one project:

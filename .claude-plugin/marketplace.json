@@ -1,5 +1,5 @@
 {
-  "name": "langsmith-claude-code",
+  "name": "langsmith-shunt",
   "description": "langsmith-shunt: keep large files out of Claude Code's context by sending them to a cheaper model through the LangSmith LLM Gateway, with the tokens saved measured from LangSmith runs.",
   "owner": {
     "name": "Joel Strickland"

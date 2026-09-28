@@ -6,7 +6,7 @@
   "author": {
     "name": "Joel Strickland"
   },
-  "repository": "https://github.com/joel-langchain/langsmith-claude-code",
+  "repository": "https://github.com/joel-langchain/langsmith-shunt",
   "license": "Apache-2.0",
   "keywords": ["langsmith", "token-optimization", "model-routing", "delegation", "hooks"]
 }
