@@ -36,6 +36,13 @@ shunt_line_count() {
   wc -l <"$1" 2>/dev/null | tr -d ' '
 }
 
+# The bulk-read command, spelled out so Claude can run it without loading
+# the skill first.
+shunt_bulk_read_command() {
+  local root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+  printf '"%s/scripts/bulk-read" --question "<your question>" --paths "%s"' "$root" "$1"
+}
+
 # Denies the tool call. The reason is shown to Claude, not to the user.
 shunt_deny() {
   jq -n --arg reason "$1" '{

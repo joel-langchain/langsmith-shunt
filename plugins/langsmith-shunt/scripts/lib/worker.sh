@@ -9,7 +9,7 @@
 # Every call stands alone. Nothing is kept between calls, and a follow-up
 # question re-sends the files, which costs the worker tokens but not Claude's.
 
-SHUNT_VERSION="0.1.2"
+SHUNT_VERSION="0.1.3"
 
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
 LANGSMITH_ENDPOINT="${LANGSMITH_ENDPOINT%/}"

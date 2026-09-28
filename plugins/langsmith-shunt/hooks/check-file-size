@@ -25,4 +25,4 @@ shunt_is_text "$path" || exit 0
 lines=$(shunt_line_count "$path")
 [ "${lines:-0}" -gt "$SHUNT_MIN_LINES" ] || exit 0
 
-shunt_deny "$file_path is $lines lines (limit $SHUNT_MIN_LINES for a full read). To understand it, use the bulk-reader skill, which sends the file to a cheaper model and returns only the answer. To edit it, Read again with offset and limit for the section you need."
+shunt_deny "$file_path is $lines lines, and full reads of files over $SHUNT_MIN_LINES lines are blocked. To answer a question about it, run this instead of reading it in parts with Read, grep, or sed: $(shunt_bulk_read_command "$file_path") It returns only the answer, and --paths takes several files at once. Only when you need to edit the file, Read the lines you will change with offset and limit."

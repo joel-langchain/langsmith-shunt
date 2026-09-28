@@ -113,4 +113,4 @@ done <<<"$segments"
 
 [ "$total" -gt "$SHUNT_MIN_LINES" ] || exit 0
 
-shunt_deny "This command prints about $total lines from $first_path (limit $SHUNT_MIN_LINES). To understand the file, use the bulk-reader skill, which sends it to a cheaper model and returns only the answer. For specific lines, use grep, or Read with offset and limit."
+shunt_deny "This command prints about $total lines from $first_path, over the $SHUNT_MIN_LINES-line limit. To answer a question about the file, run this instead of reading it in parts: $(shunt_bulk_read_command "$first_path") It returns only the answer, and --paths takes several files at once. Only when you need to edit the file, Read the lines you will change with offset and limit."

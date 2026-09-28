@@ -61,6 +61,17 @@ expect none "SHUNT_DISABLED=1" check-file-size "$(read_input "$FIX/big.ts")" SHU
 expect none "SHUNT_MIN_LINES=1000" check-file-size "$(read_input "$FIX/big.ts")" SHUNT_MIN_LINES=1000
 expect deny "non-numeric SHUNT_MIN_LINES falls back to 350" check-file-size "$(read_input "$FIX/big.ts")" SHUNT_MIN_LINES=abc
 
+reason=$(run_hook check-file-size "$(read_input "$FIX/big.ts")" CLAUDE_PLUGIN_ROOT=/plugin/root | jq -r .hookSpecificOutput.permissionDecisionReason)
+case "$reason" in
+  *'"/plugin/root/scripts/bulk-read" --question "<your question>" --paths "'"$FIX"'/big.ts"'*) pass "deny reason gives the exact bulk-read command" ;;
+  *) fail "deny reason gives the exact bulk-read command" "$reason" ;;
+esac
+reason=$(run_hook check-file-size "$(read_input "$FIX/big.ts")" | jq -r .hookSpecificOutput.permissionDecisionReason)
+case "$reason" in
+  *'/plugins/langsmith-shunt/scripts/bulk-read"'*) pass "without CLAUDE_PLUGIN_ROOT the path comes from the hook's location" ;;
+  *) fail "without CLAUDE_PLUGIN_ROOT the path comes from the hook's location" "$reason" ;;
+esac
+
 echo
 echo "check-bash-read (Bash)"
 expect deny "cat large file" check-bash-read "$(bash_input "cat $FIX/big.ts")"
