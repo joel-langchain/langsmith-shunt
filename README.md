@@ -68,7 +68,15 @@ What passes the hooks unchanged: reads with `offset` or `limit`, files at or und
 
 ## Measured result so far
 
-A 45-session experiment on 28 Sep 2026 ([design](experiments/read-gate/DESIGN.md), [results](experiments/read-gate/RESULTS.md)) found no effect, because the gate never fired. On three tasks over files of 367 to 1,227 lines, Claude Code (Opus 5.5) never tried to read a large file in full. It used Grep and short targeted reads, so cost per task was the same with and without the plugin, and every answer was correct. In one earlier session, where the prompt told Claude to read the file, the block made the session cost more, because Claude worked round it instead of delegating. Tasks that need a whole file understood have not been tested yet.
+Two pre-registered experiments on 28 Sep 2026, 105 Claude Code sessions in total (Opus 5.5 as the main model, Haiku 4.5 as the worker, files of 367 to 1,227 lines):
+
+| Kind of task | Without the plugin | With the plugin |
+| --- | --- | --- |
+| Lookup or edit ([results](experiments/read-gate/RESULTS.md)) | Claude uses Grep and short reads, never a full read | No effect. The block never fired, and cost was within a few cents |
+| Summary of one file ([results](experiments/whole-file/RESULTS.md)) | Claude reads the file in full | 13 to 20% cheaper per task, same fact coverage |
+| Summary of four files ([results](experiments/whole-file/RESULTS.md)) | Claude reads all four in full | 18 to 32% cheaper on average, with some specific detail lost; inconclusive by the pre-registered rule |
+
+The saving comes from not writing whole files into Claude's prompt cache. In most sessions the bulk-reader skill's description, not the hook, is what led Claude to delegate. The hook fired only when the prompt said "read" the file.
 
 ## Measuring the savings
 

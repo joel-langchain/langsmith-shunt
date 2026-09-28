@@ -1,0 +1,88 @@
+{
+  "arm": "gate-v1",
+  "task": "one-file-neutral",
+  "rep": 3,
+  "order": 29,
+  "run_id": "gate-v1--one-file-neutral--3--2a625308",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790605904.6476889,
+  "duration_s": 56.4,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "72d4d624-3e91-448c-8d87-d992b32d7d90",
+    "total_cost_usd": 0.14871679999999998,
+    "num_turns": 5,
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 13262,
+      "cache_read_input_tokens": 201834,
+      "output_tokens": 2100,
+      "output_tokens_details": {
+        "thinking_tokens": 150
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 13262
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1430,
+          "cache_read_input_tokens": 53513,
+          "cache_creation_input_tokens": 2796,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 2796,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 10,
+        "outputTokens": 2100,
+        "cacheReadInputTokens": 201834,
+        "cacheCreationInputTokens": 13262,
+        "webSearchRequests": 0,
+        "costUSD": 0.14871679999999998,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 150,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 55716,
+    "result": "`langsmith.ts` turns Claude Code session transcripts into LangSmith traces. It reads the parsed transcript, builds a tree of runs from it, and sends that tree to LangSmith through the JS SDK's `RunTree` API.\n\nI didn't read all 1,227 lines myself. A cheaper model (Haiku) summarised the file, and I've relayed what it found, so the line numbers are its citations. Open the code before relying on any exact detail.\n\n## Trace shape\nEach turn is traced as a small tree:\n- **Turn** is the parent run for one user prompt.\n  - **Assistant** is one run for each model call, with its token usage attached.\n  - **Tool** is one run for each tool call. These sit under the Turn, alongside the Assistant runs.\n- **Subagents and workflow stages** are traced the same way, one level down: a \"subagent\" chain run holding its own turns, placed under the Agent or Workflow tool run that started it.\n\nRuns are linked through LangSmith's `dotted_order` IDs. `generateDottedOrderSegment` (76) and `parseDottedOrder` (99) build and parse them.\n\n## Main functions\n**Setup and teardown**\n- `initTracing` (32) creates the LangSmith client. It handles the API key, URL, replicas and optional redaction.\n- `flushPendingTraces` (56) waits for queued batches to send, so traces aren't lost when the hook process exits.\n\n**Tracing a turn**\n- `traceTurn` (188\u2013509) does most of the work. It creates or reuses the Turn run, adds the Assistant and Tool runs, and builds up the message history. It also records Task/Agent tool runs in a `taskRunMap` so subagents can be attached to them later.\n- `completeTurnRun` (605) and `closeTurnRun` (626) both use `patchTurnRun` (537) to close the Turn run. The first closes it normally with the final outputs; the second closes it with an error or status.\n- `closeInterruptedTurn` (643) handles turns the user interrupted. It re-reads the transcript from the last checkpoint, traces any model calls and subagents still waiting, then closes the Turn with a \"User interrupt\" error.\n\n**Subagents and workflows**\n- `tracePendingSubagents` (828) takes the subagents queued by the SubagentStop hook, reads each one's transcript, and passes it to `traceSubagentChain` (1005). That function adds the chain run and calls `traceTurn` again for each of the subagent's turns.\n- `traceWorkflowStage` (1089) traces one workflow stage as a chain run under the Workflow tool run.\n- `closeAgentToolRun` (1154) closes an Agent tool run that was left open. If that run was never sent, it creates it already closed.\n\n**Formatting helpers**\n- `formatContent` (109) and `buildUsageMetadata` (125) convert transcript content blocks and token usage into the format LangSmith expects.\n\n## How it connects to the other files\n- **`config.ts`** supplies the `Config` type: API key, project, base URL, state file path, custom metadata and redaction rules.\n- **`transcript.ts`** supplies the input. `readTranscript` and `groupIntoTurns` produce `Turn` objects, each holding model calls, tool calls, content and usage. `resolveProvider` and `completedToolUseIds` are also used.\n- **`stop.ts`** is the Stop hook and the main caller. It runs `initTracing`, then `traceTurn`, `tracePendingSubagents` and `completeTurnRun`, and ends with `flushPendingTraces`.\n\nThe summary also says other hooks call this file: `user-prompt-submit.ts`, `session-end.ts`, `subagent-stop.ts` and `finalize.ts`. Those files aren't in this directory, so the model probably took that from comments in the code.\n\nThe design has to cope with Claude Code hooks being short-lived, separate processes. Runs can be left open in one hook and closed in a later one, which is why there are separate open, complete and close functions and a flush at the end of every hook."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Bash": 2,
+      "Skill": 1
+    },
+    "bash_commands": [
+      "wc -l langsmith.ts; ls",
+      "\"/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v1/plugins/langsmith-shunt/scripts/bulk-read\" --question \"Summarise langsmith.ts: (1) its overall purpose; (2) each main exported and internal function with line numb"
+    ],
+    "blocked": 0,
+    "bulk_reads": 1,
+    "worker_in": 36127,
+    "worker_out": 1737,
+    "worker_cost_usd": 0.044812,
+    "full_reads": 0,
+    "partial_read_limits": []
+  }
+}

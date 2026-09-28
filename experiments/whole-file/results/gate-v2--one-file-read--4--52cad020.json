@@ -1,0 +1,87 @@
+{
+  "arm": "gate-v2",
+  "task": "one-file-read",
+  "rep": 4,
+  "order": 32,
+  "run_id": "gate-v2--one-file-read--4--52cad020",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v2/plugins/langsmith-shunt",
+  "started": 1790605957.3838239,
+  "duration_s": 50.8,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "43458726-9e85-4540-9f41-92d9c575c80b",
+    "total_cost_usd": 0.1386714,
+    "num_turns": 3,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 13223,
+      "cache_read_input_tokens": 148762,
+      "output_tokens": 2139,
+      "output_tokens_details": {
+        "thinking_tokens": 71
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 13223
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1566,
+          "cache_read_input_tokens": 53167,
+          "cache_creation_input_tokens": 3103,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 3103,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 2139,
+        "cacheReadInputTokens": 148762,
+        "cacheCreationInputTokens": 13223,
+        "webSearchRequests": 0,
+        "costUSD": 0.1386714,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 71,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 50190,
+    "result": "`langsmith.ts` is 1,227 lines. A hook blocks full reads of files that long, so a cheaper model (Haiku 4.5) read it and summarised it for me. What follows is based on that summary, and I haven't checked it line by line against the source.\n\n## Purpose\n\nThe file takes parsed Claude Code conversation turns and uploads them to LangSmith as nested run trees, using the LangSmith JS SDK's `RunTree` API. It is driven by Claude Code hooks (UserPromptSubmit, PostToolUse, SubagentStop, Stop). It records each turn with its LLM calls, tool calls, subagents and dynamic-workflow stages, and it can redact secrets before upload.\n\n## Main functions\n\n**Setup and shutdown**\n- `initTracing(apiKey?, apiUrl?, replicas?, redact?, extraRedactionRules?)` creates one global LangSmith client that every later call uses. It can add a secret anonymiser and send copies to replica endpoints.\n- `flushPendingTraces()` waits for queued batches to finish sending before the hook process exits.\n\n**Core tracing**\n- `traceTurn(options)` is the main entry point and builds the tree for one turn:\n  - **Turn run** (chain): it creates one, or reuses the parent run opened at UserPromptSubmit.\n  - **LLM runs** (llm): one per model call, each including the earlier messages as input.\n  - **Tool runs** (tool): these sit alongside the LLM run, directly under the turn.\n  - **`taskRunMap`**: Task/Agent tool runs are stored here, keyed by `agent_id`, so subagents can be linked to them later.\n\n**Finishing a turn**\n- `completeTurnRun()` closes the turn with its final outputs, and `closeTurnRun()` closes it with an error.\n- Both go through the internal `patchTurnRun()`, which is the only place a turn gets closed.\n\n**Recovering interrupted turns**\n- `closeInterruptedTurn()` handles turns where Stop never fired. It traces any LLM calls not yet sent, processes queued subagents, and closes the turn with a \"User interrupt\" error. It returns `{ lastLine, turnsTraced, consumedToolUseIds }` so the caller can update its state.\n\n**Subagents and workflows**\n- `tracePendingSubagents()` handles subagents queued by SubagentStop:\n  - It reads each subagent's transcript and creates the Agent tool run. That run is held back from PostToolUse so it can take the subagent's real name and correct timings.\n  - It then calls `traceSubagentChain()`, which nests the subagent's turns underneath by calling `traceTurn` again.\n- `traceWorkflowStage()` traces one dynamic-workflow stage as a chain under the open Workflow tool run. Stages are matched by `workflow_run_id`, and there is no separate Agent run per stage.\n- `closeAgentToolRun()` closes Agent/Workflow runs that were left open for async agents (`keepAgentToolRunOpen`), so a later task-notification turn can nest under them first.\n\n**Helpers**\n- `generateDottedOrderSegment` and `parseDottedOrder` build and parse LangSmith's `dotted_order` strings. These encode where a run sits in the tree, so a new run can be attached to an existing parent.\n- `formatContent` converts content blocks (text, thinking, tool_use) into LangSmith message format.\n- `buildUsageMetadata` builds token usage, including cache tokens.\n- `turnIdentityFromOpenTurn` rebuilds a turn's identity from stored state.\n\n## How they fit together\n\n```\ninitTracing \u2500\u25ba traceTurn (per turn)\n                 \u251c\u2500 turn run \u2192 LLM runs \u2192 tool runs\n                 \u2514\u2500 Task tools recorded in taskRunMap\n             \u2500\u25ba tracePendingSubagents (after SubagentStop)\n                 \u2514\u2500 Agent tool run \u2192 traceSubagentChain \u2192 traceTurn (recursive)\n             \u2500\u25ba completeTurnRun / closeTurnRun / closeInterruptedTurn\n                 \u2514\u2500 patchTurnRun\n             \u2500\u25ba flushPendingTraces (before exit)\n```\n\n## Design points\n\n- **Batching and retries:** these are left to the SDK.\n- **Tracing detail:** each turn and each tool can be traced in full or as metadata only. Settings captured at launch can reduce the detail but never turn tracing back on.\n- **Late state updates:** `closeInterruptedTurn` re-reads the state file, because async hooks may have written to it after the snapshot was taken."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Read": 1,
+      "Bash": 1
+    },
+    "bash_commands": [
+      "\"/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v2/plugins/langsmith-shunt/scripts/bulk-read\" --question \"Summarise this file: its overall purpose, the main functions/classes/exports (with names and what each does)"
+    ],
+    "blocked": 1,
+    "bulk_reads": 1,
+    "worker_in": 17367,
+    "worker_out": 1922,
+    "worker_cost_usd": 0.026977,
+    "full_reads": 1,
+    "partial_read_limits": []
+  }
+}

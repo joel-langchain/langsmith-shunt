@@ -1,0 +1,84 @@
+{
+  "arm": "control",
+  "task": "one-file-neutral",
+  "rep": 5,
+  "order": 27,
+  "run_id": "control--one-file-neutral--5--11407460",
+  "plugin_dir": null,
+  "started": 1790605875.7832608,
+  "duration_s": 28.9,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "1a555588-5fec-4f3f-a703-5a54c18cfc2c",
+    "total_cost_usd": 0.21217699999999998,
+    "num_turns": 2,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 29592,
+      "cache_read_input_tokens": 95405,
+      "output_tokens": 2256,
+      "output_tokens_details": {
+        "thinking_tokens": 8
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 29592
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2114,
+          "cache_read_input_tokens": 52358,
+          "cache_creation_input_tokens": 20281,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 20281,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 2256,
+        "cacheReadInputTokens": 95405,
+        "cacheCreationInputTokens": 29592,
+        "webSearchRequests": 0,
+        "costUSD": 0.21217699999999998,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 8,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 28238,
+    "result": "`langsmith.ts` sends Claude Code sessions to LangSmith as traces. It takes conversation turns that have already been parsed from the transcript (`transcript.ts` does the parsing) and turns them into a tree of LangSmith runs. It uploads them with the LangSmith JS SDK's `RunTree`, which takes care of batching, retries and auth. The functions are called from Claude Code hooks such as UserPromptSubmit, PostToolUse, Stop, SubagentStop and SessionEnd.\n\n## The trace shape it builds\n\n```\nTurn (chain)                         \u2190 one per user prompt; the trace root\n\u251c\u2500\u2500 Assistant (llm)                  \u2190 one per model call, with the running message history as input\n\u251c\u2500\u2500 ToolA (tool)                     \u2190 tools sit beside the Assistant run, both children of Turn\n\u251c\u2500\u2500 Agent (tool)                     \u2190 a Task / subagent launch\n\u2502   \u2514\u2500\u2500 \"<type> Subagent\" (chain)\n\u2502       \u2514\u2500\u2500 Turn \u2192 Assistant / tools \u2026   (the subagent's own turns, handled the same way)\n\u2514\u2500\u2500 Workflow (tool)\n    \u2514\u2500\u2500 \"Workflow step\" (chain) \u2192 turns \u2026\n```\n\nThe file doesn't let the SDK work out where each run belongs. It sets the ID, trace ID and position in the tree for every run itself. IDs are `uuid7FromTime(timestamp)`, and each run's position string (`dotted_order`) is its parent's string plus a segment built from its own timestamp and ID. That's how several separate hook processes can add runs to the same tree.\n\n## Main pieces\n\n**Setup**\n- `initTracing` (`langsmith.ts:32`) creates the shared `Client`, keeps the optional replica destinations, and adds a secret-redaction anonymizer by default, so secrets are stripped before anything is uploaded.\n- `flushPendingTraces` (`:56`) waits for all queued uploads to finish so a hook process doesn't exit before its traces are sent.\n\n**Helpers**\n- `generateDottedOrderSegment` and `parseDottedOrder` build and read the position strings.\n- `formatContent` converts transcript content blocks (text, thinking, tool use) into LangSmith's message format.\n- `buildUsageMetadata` counts cache-read and cache-creation tokens as input tokens and returns nothing if there were no tokens at all.\n\n**`traceTurn` (`:188`)**, the core function. For one turn it:\n1. Uses the Turn run UserPromptSubmit already opened (`parentRunId`), or, for an interrupted or standalone turn, creates its own Turn run as a new trace root.\n2. For each LLM call, opens an Assistant run whose input is all the messages so far.\n3. Posts each tool call as a finished run. Tools that PostToolUse already traced (`tracedToolUseIds` / `existingTaskRunMap`) are skipped. Start times are adjusted so no run shows a negative duration.\n4. Closes the Assistant run with its outputs, model, provider and token usage.\n5. Closes the Turn run if it created it, marking it `\"Interrupted\"` if the turn didn't finish.\n\nIt returns a map from `agentId` to the Task tool's run (`TaskRunEntry`), which is used later to attach subagent traces under the right run.\n\n**Closing turns**\n- `patchTurnRun` (`:537`) is the single place a root Turn run gets closed, either with outputs or with an error. LangSmith rejects closing a run twice, so every close goes through here once.\n- `completeTurnRun` closes a turn normally with the last assistant message. `closeTurnRun` force-closes one with an error.\n- `turnIdentityFromOpenTurn` rebuilds what's needed to close a stored open turn.\n\n**Recovering interrupted turns: `closeInterruptedTurn` (`:643`)**\nUsed when Stop never fired, for example the user interrupted and then sent a new prompt, or the session ended. It:\n- traces whatever is left of the turn in the transcript through `traceTurn`,\n- re-reads the saved state so it picks up subagent entries that other hooks wrote in the meantime,\n- traces any queued subagents,\n- closes the Turn run with `\"User interrupt\"` and flushes.\n\nIf it's given an `OpenTurn` that Stop already traced, it only closes that turn's root run. It returns the new transcript line position, the number of turns traced, and the consumed tool IDs, so the caller can update its state.\n\n**Subagents and workflows**\n- `tracePendingSubagents` (`:828`) handles subagents that SubagentStop queued. PostToolUse holds back the Agent tool run until the subagent's real name is known; this function creates it. It stretches the end time to cover the subagent's actual activity, since background agents report back when launched, not when they finish. Then it calls `traceSubagentChain`. With `keepAgentToolRunOpen`, it leaves the Agent run open so a later task-notification turn can sit under it.\n- `traceSubagentChain` (`:1005`) posts the `\"<type> Subagent\"` or `\"Workflow step\"` run and calls `traceTurn` for each subagent turn with `agentType: \"subagent\"`. `traceTurn` and `traceSubagentChain` call each other; that's how nesting works.\n- `traceWorkflowStage` (`:1089`) traces one dynamic-workflow step directly under the already-open Workflow run.\n- `closeAgentToolRun` (`:1154`) closes an Agent or Workflow run that was left open. If the run was never posted (the subagent was killed), it creates it already closed so the trace still shows the agent was launched.\n\n## How it fits together\n\n1. At startup, `initTracing` runs.\n2. Each hook then reads the transcript, calls `traceTurn`, or `tracePendingSubagents` / `traceWorkflowStage` for subagents, then `completeTurnRun`, or `closeInterruptedTurn` on the recovery path.\n3. It finishes with `flushPendingTraces`.\n\nEvery run goes through `createRunTree` (in `privacy.ts`), which applies the tracing mode: `\"full\"`, or `\"metadata\"` to hide content. A tool's own mode can hide more than its turn does but never less. Every run also gets the same metadata from `codingAgentMetadata`: session, turn ID and number, runtime version, and agent role."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0,
+    "full_reads": 1,
+    "partial_read_limits": []
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "arm": "control",
+  "task": "one-file-read",
+  "rep": 3,
+  "order": 19,
+  "run_id": "control--one-file-read--3--fd0ba329",
+  "plugin_dir": null,
+  "started": 1790605767.5522408,
+  "duration_s": 30.3,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "58ec804a-c92d-4e5a-92aa-2b2bc7bec5da",
+    "total_cost_usd": 0.21122799999999997,
+    "num_turns": 2,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 29598,
+      "cache_read_input_tokens": 95410,
+      "output_tokens": 2207,
+      "output_tokens_details": {
+        "thinking_tokens": 16
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 29598
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2064,
+          "cache_read_input_tokens": 52363,
+          "cache_creation_input_tokens": 20282,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 20282,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 2207,
+        "cacheReadInputTokens": 95410,
+        "cacheCreationInputTokens": 29598,
+        "webSearchRequests": 0,
+        "costUSD": 0.21122799999999997,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 16,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 29681,
+    "result": "`langsmith.ts` turns a Claude Code session, as the transcript parser has split it into turns, into LangSmith trace trees and uploads them with the LangSmith JS SDK's `RunTree`. Claude Code hooks (UserPromptSubmit, PostToolUse, Stop, SubagentStop, SessionEnd) run as short-lived processes. So this module builds each run's ID, parent, trace ID and ordering key itself, and patches runs closed later in a separate hook call.\n\n## Trace shape\n\n```\nTurn (chain)                      \u2190 one per user prompt\n\u251c\u2500\u2500 Assistant (llm)               \u2190 one per LLM call\n\u251c\u2500\u2500 ToolA (tool)                  \u2190 tools sit beside the Assistant run, not under it\n\u251c\u2500\u2500 Agent (tool)                  \u2190 Task tool that launched a subagent\n\u2502   \u2514\u2500\u2500 \"<type> Subagent\" (chain)\n\u2502       \u2514\u2500\u2500 Turn \u2192 Assistant / tools \u2026  (the subagent's own turns)\n\u2514\u2500\u2500 Workflow (tool)\n    \u2514\u2500\u2500 \"Workflow step\" (chain) \u2192 turns \u2026\n```\n\n## Main pieces\n\n**Setup and flushing**\n- `initTracing` creates the module-level `Client` and stores any replica destinations. By default it attaches a secret anonymiser, so secrets are stripped on the client before upload, including uploads to replicas. It always keeps the configured `apiUrl`, so replicas don't quietly fall back to the SDK's default URL.\n- `flushPendingTraces` waits for pending batches on both this client and the SDK's shared client. Hooks call it before they exit.\n\n**Ordering helpers**\n- `generateDottedOrderSegment` builds LangSmith's `dotted_order` key (a stripped timestamp plus the run ID). `parseDottedOrder` does the reverse and returns the trace ID and the ID of the last run in the chain. Run IDs come from `uuid7FromTime`, so they depend on the timestamp and sort by time.\n- `formatContent` converts content blocks into LangSmith message format, turning `tool_use` into `tool_call`. `buildUsageMetadata` adds up input tokens, including cache reads and cache writes, and returns nothing if the count is zero.\n\n**`traceTurn`**\nThis is the main function. For one turn it:\n1. Uses the existing Turn run if `parentRunId` is given; UserPromptSubmit normally creates that run already. Otherwise it creates a standalone Turn run and makes it the root of the trace.\n2. For each LLM call, posts an open Assistant run whose inputs are all the messages so far.\n3. Posts each tool run already closed. It skips tools PostToolUse already traced (`tracedToolUseIds`, `existingTaskRunMap`), and moves the start time back if needed so latency is never negative with parallel tool calls. It records each Task tool run in `taskRunMap` so subagents can be attached later.\n4. Patches the Assistant run closed with its outputs, model, provider and token usage, then adds the assistant and tool messages to the running message list.\n5. If it created the Turn run itself, closes it too, with the error `\"Interrupted\"` if the turn never finished.\n\nIt returns the updated `taskRunMap`.\n\n**Closing Turn runs**\n- `patchTurnRun` is the one place every Turn run gets closed. It writes either the final assistant message or an error. LangSmith rejects a second patch on a run that already has an end time, so the run has to stay open until this call.\n- `completeTurnRun` closes a turn normally. `closeTurnRun` force-closes it with an error. `turnIdentityFromOpenTurn` rebuilds the fields a close needs from a stored `OpenTurn`.\n\n**`closeInterruptedTurn`**\nHandles turns where Stop never fired, called from the next UserPromptSubmit or from SessionEnd. For an explicitly deferred turn it just closes the run. Otherwise it:\n- traces the rest of the transcript through `traceTurn`,\n- re-reads the state file to pick up anything the async hooks wrote,\n- traces any subagents still pending,\n- closes the Turn run with `\"User interrupt\"` and flushes.\n\nIt returns the new `lastLine`, the number of turns traced and the tool-use IDs it used up, so the caller can update its state.\n\n**Subagents and workflows**\n- `tracePendingSubagents` goes through the subagents queued by SubagentStop and looks up each one's Agent tool run in `taskRunMap`. PostToolUse put off creating that run so it could use the real subagent name, and it gets posted here. Its end time is pushed out to the subagent's last activity, because for a background agent PostToolUse fires at launch. With `keepAgentToolRunOpen`, the run is left open so a later task-notification turn can sit under it. The Agent run is posted even when the subagent's transcript is empty, so the parent turn doesn't stay open until the session ends.\n- `traceSubagentChain` is shared by subagents and workflows. It posts the \"Subagent\" (or \"Workflow step\") chain run, then calls `traceTurn` for each subagent turn with `agentType: \"subagent\"`.\n- `traceWorkflowStage` traces one dynamic-workflow stage straight under its open Workflow run. There is no Agent run for each stage.\n- `closeAgentToolRun` closes an Agent or Workflow run that was left open. If the run was never posted, for example because the subagent was killed, it creates the run already closed so the trace still shows the agent was launched.\n\n## How it fits together\nEvery run goes through `createRunTree` (from `privacy.ts`) with a tracing mode (`full` or `metadata`, and possibly a different mode per tool) and metadata from `codingAgentMetadata`: session and turn IDs, runtime version, approval policy, agent role, and tool or skill names. The file never keeps runs in memory from one hook to the next. Each hook rebuilds the run from saved IDs, trace IDs and ordering keys, then posts it (to open it) or patches it (to close it). That's why the state file's `task_run_map`, `open_turns` and `pending_subagent_traces` keep coming up: they carry trace context from one hook process to the next."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0,
+    "full_reads": 1,
+    "partial_read_limits": []
+  }
+}

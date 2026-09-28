@@ -1,0 +1,89 @@
+{
+  "arm": "gate-v1",
+  "task": "four-file-neutral",
+  "rep": 4,
+  "order": 48,
+  "run_id": "gate-v1--four-file-neutral--4--5bee6c7c",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790606149.7249868,
+  "duration_s": 92.3,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "c4eb5fcd-70ae-49bf-adf9-d3c223e261b4",
+    "total_cost_usd": 0.215024,
+    "num_turns": 6,
+    "usage": {
+      "input_tokens": 12,
+      "cache_creation_input_tokens": 19196,
+      "cache_read_input_tokens": 263180,
+      "output_tokens": 3318,
+      "output_tokens_details": {
+        "thinking_tokens": 203
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 19196
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2306,
+          "cache_read_input_tokens": 61024,
+          "cache_creation_input_tokens": 1219,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 1219,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 12,
+        "outputTokens": 3318,
+        "cacheReadInputTokens": 263180,
+        "cacheCreationInputTokens": 19196,
+        "webSearchRequests": 0,
+        "costUSD": 0.215024,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 203,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 91518,
+    "result": "These four files make up a Claude Code \u2192 LangSmith tracing integration. `stop.ts` is the Stop hook that runs each time Claude finishes a response. It uses `transcript.ts` to read and parse the session transcript, and `langsmith.ts` to turn that into LangSmith runs. `config.ts` supplies the settings everything else runs on.\n\n## What each file does\n\n**`config.ts`: settings.** Imports nothing from the other three.\n- `loadConfig()` (~L199) builds a `Config` from environment variables and JSON config files.\n  - Env vars include `CC_LANGSMITH_API_KEY`/`LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT`, `CC_LANGSMITH_PROJECT`, `TRACE_TO_LANGSMITH`, `CC_LANGSMITH_REDACT`, `CC_LANGSMITH_REDACT_EXTRA`, `CC_LANGSMITH_METADATA`, `CC_LANGSMITH_RUNS_ENDPOINTS` and `STATE_FILE`.\n  - Config files are `.claude/langsmith.json` and `~/.claude/langsmith.json`, among others.\n- It also works out who and where you are: the Anthropic user ID from `~/.claude.json` and the local username (`readAnthropicUserId`, `readLocalUsername`), plus the repo name, branch and commit SHA from git (`getRepoName`, `parseRepoName`, `getGitInfo`).\n- Redaction is on by default. The state file defaults to `~/.claude/state/langsmith_state.json`.\n- `stop.ts` doesn't import this file directly. It gets the config through `initHook()` in `utils/hook-init.js`.\n\n**`transcript.ts`: parsing.** Imports nothing from the other three, only shared types from `types.js`.\n- `readTranscript(path, lastLine)` (~L29) reads the JSONL transcript in 2 MB chunks. It returns only the messages after the last line already processed, and skips malformed lines.\n- `groupIntoTurns()` (~L348) turns the flat message list into `Turn[]` objects. A turn is one user prompt, followed by its LLM calls, each with its tool calls matched to their results. Along the way it merges streamed assistant chunks by message ID and splits turns on `promptId` or a new human message.\n- Helpers:\n  - `readRuntimeVersion` gets the CLI version.\n  - `completedToolUseIds` lists tool calls that have results.\n  - `resolveProvider` works out Anthropic, Bedrock or Vertex.\n  - `stripModelDateSuffix` normalises model names.\n\n**`langsmith.ts`: mapping to LangSmith runs.** Imports `readTranscript`, `groupIntoTurns`, `resolveProvider` and `completedToolUseIds` from `transcript.ts`.\n- `initTracing()` (~L32) sets up the LangSmith client, replica endpoints and the secret anonymizer.\n- `traceTurn()` (~L188) creates the run tree for one turn:\n  - a root `chain` run for the turn;\n  - an `llm` run for each assistant call, with token usage;\n  - a `tool` run for each tool call, skipping any the PostToolUse hook already traced.\n  - Each run is posted as soon as it's created and patched closed when it finishes.\n  - Task/Agent tool runs are also recorded in a `taskRunMap`, so subagents can be attached under them later.\n- `tracePendingSubagents()` (~L828) reads each subagent's own transcript and traces it under its Agent tool run.\n- `completeTurnRun()`, `closeTurnRun()` and `closeInterruptedTurn()` (~L605\u2013643) close the root turn run.\n- `flushPendingTraces()` (~L56) waits for all queued batches to finish sending.\n\n**`stop.ts`: the Stop hook that runs the other three.**\n- `main()` (~L40) imports the tracing functions and the `TaskRunEntry` type from `langsmith.ts`, and the parsing functions from `transcript.ts`.\n- It also uses `state.js`, `finalize.js` and `privacy.js`, which aren't among these four files.\n\n## How data flows\n\n1. **Hook input.** Claude Code sends `{session_id, transcript_path, last_assistant_message, \u2026}` on stdin. `initHook()` loads the config and `initTracing()` sets up the client.\n2. **Saved progress.** `stop.ts` loads this session's saved state from the state file. That includes `last_line` (how far through the transcript it got last time) and the open turn run ID, which the UserPromptSubmit hook created.\n3. **Read and parse.** It waits about 200 ms for the transcript write to finish. Then it calls `readTranscript(path, last_line)` and passes the result to `groupIntoTurns()`.\n4. **Fill a gap.** If the final assistant reply hasn't reached the transcript yet, it adds a synthetic LLM call built from `last_assistant_message`.\n5. **Trace.** It calls `traceTurn()` for each turn:\n   - The last turn is nested under the open UserPromptSubmit run.\n   - Any earlier turns, left over from interruptions, are traced as standalone runs.\n   - Then `tracePendingSubagents()` handles subagents that the SubagentStop hook queued.\n6. **Save progress.** Inside `atomicUpdateState()` (a locked read-modify-write, ~L282), it:\n   - advances `last_line` and `turn_count`;\n   - merges the `taskRunMap`;\n   - removes subagents it has now traced from the queue;\n   - decides whether to close the root turn now or wait because background subagents are still running (recorded in `open_turns`);\n   - clears the current-turn fields;\n   - deletes sessions older than 7 days.\n7. **Close and send.** Unless waiting, it calls `completeTurnRun()`. Turns triggered by a subagent's task notification are closed through `finalizeNotificationChain()`. Finally `flushPendingTraces()` runs and the hook always exits 0, so tracing failures never affect Claude Code.\n\nErrors are caught and logged one turn and one subagent at a time, so one bad turn doesn't stop the rest. Redaction happens on your machine before upload, and when the tracing mode is \"metadata\" the content is replaced entirely.\n\nI built this summary from a cheaper model's read of the files, which cites approximate line numbers. The only part I checked myself was the import lines, and they match. Some of the helpers it relies on live in `state.js`, `privacy.js`, `metadata.js` and `hook-init.js`, which are outside these four files."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Bash": 2,
+      "Skill": 1,
+      "Grep": 1
+    },
+    "bash_commands": [
+      "wc -l langsmith.ts transcript.ts stop.ts config.ts",
+      "\"/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp2/arm-gate-v1/plugins/langsmith-shunt/scripts/bulk-read\" --question \"Summarise how these four files work together. For each file: its purpose, key exports (functions/types/class"
+    ],
+    "blocked": 0,
+    "bulk_reads": 1,
+    "worker_in": 36141,
+    "worker_out": 5030,
+    "worker_cost_usd": 0.061291,
+    "full_reads": 0,
+    "partial_read_limits": []
+  }
+}

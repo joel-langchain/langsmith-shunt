@@ -1,0 +1,84 @@
+{
+  "arm": "control",
+  "task": "four-file-read",
+  "rep": 2,
+  "order": 1,
+  "run_id": "control--four-file-read--2--68cbdd09",
+  "plugin_dir": null,
+  "started": 1790605552.0066319,
+  "duration_s": 40.1,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "10e15291-89c0-4c76-a999-17660dc043b7",
+    "total_cost_usd": 0.5572558000000001,
+    "num_turns": 5,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 95587,
+      "cache_read_input_tokens": 52424,
+      "output_tokens": 3441,
+      "output_tokens_details": {
+        "thinking_tokens": 94
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 95587
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2884,
+          "cache_read_input_tokens": 52424,
+          "cache_creation_input_tokens": 43163,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 43163,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 3441,
+        "cacheReadInputTokens": 52424,
+        "cacheCreationInputTokens": 95587,
+        "webSearchRequests": 0,
+        "costUSD": 0.5572558000000001,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 94,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 39377,
+    "result": "These four files are part of a Claude Code \u2192 LangSmith tracing plugin. Claude Code writes each session to a JSONL transcript. Hooks such as `stop.ts` read that transcript, turn it into a tree of LangSmith runs, and upload it.\n\n## What each file does\n\n### `config.ts`: settings and metadata\n`loadConfig()` returns a `Config` object:\n- **Where the settings come from:** environment variables (`CC_LANGSMITH_API_KEY`/`LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT`, `CC_LANGSMITH_PROJECT`, `TRACE_TO_LANGSMITH`, etc.) and up to four JSON config files (`.claude/langsmith.json` and `langsmith-plugins.json`, in the project and in your home directory). `mergeCommonConfig` combines them, and environment variables win. Defaults are project `claude-code` and `api.smith.langchain.com`.\n- **Redaction:** redaction is on unless `CC_LANGSMITH_REDACT` is set to false. Extra rules from `CC_LANGSMITH_REDACT_EXTRA` are checked one by one, and a bad rule is logged and skipped so it can't break tracing.\n- **Replicas:** extra upload destinations (`CC_LANGSMITH_RUNS_ENDPOINTS`) and a parent dotted order for nesting all traces under an existing run.\n- **Base metadata (`customMetadata`):** attached to every run. It includes:\n  - fixed labels such as `ls_integration: \"claude-code\"` and `ls_trace_schema_version: \"coding-agent-v1\"`\n  - who is running it: `user_id` from `~/.claude.json` and the OS username\n  - the git repo name, URL, branch and commit SHA, found with `git`\n  - any metadata you supply, which wins on key clashes.\n- The state file path (`~/.claude/state/langsmith_state.json`), which the hooks share.\n\n### `transcript.ts`: parsing the transcript\nThis file only reads and groups; it never uploads anything.\n- **`readTranscript(path, afterLine)`** returns the parsed messages after a given line number, plus the new last line. That line number is the cursor that stops the same content being traced twice. Files over 50 MB are read in 2 MB chunks to avoid running out of memory, and malformed lines are skipped.\n- **`groupIntoTurns(messages)`** builds `Turn` objects:\n  - A new turn starts at each human message (or each change of `promptId`).\n  - Streamed assistant chunks with the same `message.id` are merged into one `LLMCall`. Adjacent text is joined, and token usage comes from the last chunk.\n  - Each `tool_use` is matched to its `tool_result` by id. The result's `agentId` is also picked up, which is how subagents get linked later.\n  - A turn is marked `isComplete` only if it has `stop_reason: \"end_turn\"`.\n- **Helpers:**\n  - `readRuntimeVersion` reads the CLI version from the last 64 KB of the file.\n  - `getTranscriptEndLine` finds the last line number.\n  - `resolveProvider` works out anthropic vs Bedrock vs Vertex.\n  - `completedToolUseIds` lists tool calls that already have results.\n\n### `langsmith.ts`: building and sending runs\n- **`initTracing()`** creates the LangSmith `Client`. When redaction is on, it attaches a secret anonymizer, so redaction happens on your machine before upload and also covers replicas.\n- **`traceTurn()`** turns one `Turn` into this run tree:\n  ```\n  Turn (chain)\n  \u251c\u2500\u2500 Assistant (llm)   \u2190 inputs = accumulated conversation so far\n  \u251c\u2500\u2500 Tool (tool)       \u2190 tools are siblings of the LLM run, children of the turn\n  \u2514\u2500\u2500 Assistant (llm) \u2026\n  ```\n  - Run IDs are uuid7 values built from timestamps, and dotted orders are built by hand, so the hierarchy is fixed without any lookups.\n  - If a `parentRunId` is passed in (the Turn run that UserPromptSubmit already created), children go under it. Otherwise it creates a standalone Turn run and marks it `\"Interrupted\"` if the turn didn't finish.\n  - It skips tools that PostToolUse already traced.\n  - It returns a `taskRunMap` (agentId \u2192 tool run id and dotted order) so subagent traces can be attached later.\n- **Closing Turn runs:** `completeTurnRun` and `closeTurnRun` both go through `patchTurnRun`, which closes the root run once with either the final output or an error.\n- **Other operations:**\n  - `closeInterruptedTurn` recovers a turn that was interrupted.\n  - `tracePendingSubagents` and `traceSubagentChain` nest a subagent's transcript under its Agent tool run.\n  - `traceWorkflowStage` does the same for Workflow stages.\n  - `closeAgentToolRun` closes Agent tool runs that were left open for background subagents.\n  - `flushPendingTraces` waits for queued uploads to finish.\n\n### `stop.ts`: the Stop hook\nClaude Code runs this when the main agent finishes a response. It ties the other three files together.\n\n## How data flows\n\n```\nstdin (StopHookInput: session_id, transcript_path, last_assistant_message, permission_mode)\n   \u2502\n   \u25bc\ninitHook(cwd) \u2500\u2500\u25ba Config            (config.ts, presumably via loadConfig)\n   \u2502\n   \u251c\u2500\u25ba initTracing(apiKey, url, replicas, redact, rules)        (langsmith.ts)\n   \u251c\u2500\u25ba loadState(stateFilePath) \u2192 sessionState                  (last_line, turn_count,\n   \u2502                                                             current_turn_run_id, task_run_map\u2026)\n   \u25bc\nreadTranscript(path, sessionState.last_line)                    (transcript.ts)\n   \u2192 groupIntoTurns(messages) \u2192 Turn[]\n   \u2502   (+ adds a made-up final LLM call from last_assistant_message\n   \u2502     if the transcript wasn't fully written yet)\n   \u25bc\nfor each Turn: traceTurn(...)                                   (langsmith.ts)\n   - last turn  \u2192 nested under UserPromptSubmit's run, full tracing mode\n   - earlier turns (interrupted ones) \u2192 standalone, \"metadata\" mode only\n   \u2192 collects taskRunMaps\n   \u25bc\nreload state \u2192 tracePendingSubagents(...)   (sync subagents queued by SubagentStop)\n   \u25bc\natomicUpdateState: move last_line forward (only if something was traced), bump turn_count,\n   merge task_run_map, drain open_turns; decide whether to finish now or wait\n   because background subagents are still running\n   \u25bc\ncompleteTurnRun(...)  and/or  finalizeNotificationChain(...)\n   \u25bc\nflushPendingTraces()  \u2192 exit 0 (always, so Claude Code is never affected)\n```\n\n## Points worth knowing\n- **Three layers:** `transcript.ts` turns raw JSONL into typed `Turn`s, `langsmith.ts` turns `Turn`s into LangSmith runs, and `stop.ts` decides what to trace and when, using the shared state file. `config.ts` supplies the credentials, redaction settings and base metadata that end up on every run.\n- **Hooks share work through the state file.** UserPromptSubmit opens the Turn run, PostToolUse traces tools and Agent runs, SubagentStop queues or traces subagents, and Stop fills in the rest and closes the turn. Stop reads state again and writes it under a lock (`atomicUpdateState`) because the other hooks may be writing at the same time.\n- **The line cursor makes reruns safe.** `last_line` only moves forward when a turn was actually traced. If Stop fires before the transcript is written, the next run reads the same lines again.\n- **One file doesn't fit the imports:** `stop.ts` imports `../transcript.js` and friends, so in the real repo it lives in a subfolder, probably `hooks/`. Also, it never imports `config.ts` directly. It gets `Config` through `initHook` in `utils/hook-init.js`, which wasn't included. I'm assuming that function calls `loadConfig`."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Read": 4
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0,
+    "full_reads": 4,
+    "partial_read_limits": []
+  }
+}

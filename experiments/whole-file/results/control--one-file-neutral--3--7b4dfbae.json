@@ -1,0 +1,84 @@
+{
+  "arm": "control",
+  "task": "one-file-neutral",
+  "rep": 3,
+  "order": 54,
+  "run_id": "control--one-file-neutral--3--7b4dfbae",
+  "plugin_dir": null,
+  "started": 1790606237.383123,
+  "duration_s": 30.7,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "a4ef25d7-9ccc-436d-925a-51cc42b1d4af",
+    "total_cost_usd": 0.2112786,
+    "num_turns": 2,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 29604,
+      "cache_read_input_tokens": 95413,
+      "output_tokens": 2208,
+      "output_tokens_details": {
+        "thinking_tokens": 18
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 29604
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 2062,
+          "cache_read_input_tokens": 52366,
+          "cache_creation_input_tokens": 20285,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 20285,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 2208,
+        "cacheReadInputTokens": 95413,
+        "cacheCreationInputTokens": 29604,
+        "webSearchRequests": 0,
+        "costUSD": 0.2112786,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 18,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 30123,
+    "result": "`langsmith.ts` sends Claude Code session activity to LangSmith as traces. The other modules parse the transcript into `Turn` objects. This file turns those into LangSmith runs nested in a tree, then posts and patches them through the LangSmith JS SDK's `RunTree`, which handles batching, retries and auth. It's written to be called from Claude Code hooks: UserPromptSubmit, PostToolUse, Stop, SubagentStop and SessionEnd.\n\n## Trace shape\n\n```\nTurn (chain)                        \u2190 root, one per user prompt\n\u251c\u2500\u2500 Assistant (llm)                 \u2190 one per LLM call\n\u251c\u2500\u2500 ToolA (tool)                    \u2190 tools are siblings of the LLM run\n\u251c\u2500\u2500 Agent (tool)                    \u2190 Task tool launching a subagent\n\u2502   \u2514\u2500\u2500 \"<type> Subagent\" (chain)\n\u2502       \u2514\u2500\u2500 Turn \u2192 Assistant / tools ...   (same structure, recursive)\n\u2514\u2500\u2500 Workflow (tool)\n    \u2514\u2500\u2500 \"Workflow step\" (chain) \u2192 turns ...\n```\n\n## Main pieces\n\n**Setup and flushing**\n- `initTracing` (line 32) creates the module-level `Client` and stores any replica destinations. Redaction is on by default: it attaches a secret-stripping anonymizer, so secrets are removed before upload, including uploads to replicas.\n- `flushPendingTraces` (line 56) waits for both the explicit client and the SDK's shared client to finish sending. Hooks call it before exiting so no traces are lost.\n\n**Helpers**\n- `generateDottedOrderSegment` and `parseDottedOrder` (lines 76 and 99) build and parse LangSmith's `dotted_order` strings. Each run's position in the tree is written as `timestamp+runId` segments joined by dots.\n- `formatContent` (line 109) converts content blocks into LangSmith message format.\n- `buildUsageMetadata` (line 125) converts token usage. Cache-read and cache-creation tokens are added into the input token count.\n\n**`traceTurn` (line 188), the core function.** It takes one parsed `Turn` and:\n1. Uses an existing parent run if one is given: either the Turn run UserPromptSubmit already created, or a subagent chain. Otherwise it creates its own standalone root Turn run, which covers interrupted turns.\n2. For each LLM call, posts an Assistant run whose inputs are all the messages so far. It then posts one run per tool call. It skips tools that PostToolUse already traced, and clamps start times so latency is never negative. Finally it patches the Assistant run closed with its outputs, model name, provider and usage.\n3. Adds each assistant message and tool result to the message history, so the next LLM run gets the full context as input.\n4. Closes the Turn run only if it created it, marking it `\"Interrupted\"` if the turn didn't finish.\n5. Returns a `taskRunMap` (agent ID \u2192 run ID and dotted order), which is later used to attach subagent traces under the right Agent tool run.\n\n**Closing the root Turn run**\n- All closes go through `patchTurnRun` (line 537). LangSmith rejects a second patch on a run that already has an end time, so each run can only be closed once.\n- `completeTurnRun` closes the run normally with the final assistant message. `closeTurnRun` force-closes it with an error. `turnIdentityFromOpenTurn` rebuilds a run's identity from the state saved for an open turn.\n\n**`closeInterruptedTurn` (line 643), recovery when Stop never fired.** It has two paths:\n- **Deferred turn already traced:** it just patches the root run closed with the error.\n- **Live turn:** it reads the unprocessed part of the transcript and traces it with `traceTurn`. It then re-reads state to pick up anything the async hooks wrote meanwhile, traces any queued subagents, closes the root run with `\"User interrupt\"` and flushes.\n\nIt returns the new `lastLine`, the number of turns traced and the tool-use IDs it handled, so the caller can update state.\n\n**Subagents and workflows**\n- `tracePendingSubagents` (line 828) handles subagents queued by SubagentStop. PostToolUse deferred creating their Agent tool runs until now, so the run can carry the real subagent name. The function reads each subagent's transcript, extends the end time to the subagent's last activity, and posts the Agent run. For background agents it leaves the run open, so a later task-notification turn can nest under it. It then nests the subagent's work beneath.\n- `traceSubagentChain` (line 1005) is shared by subagents and workflows. It posts the intermediate chain run, then calls `traceTurn` for each subagent turn with `agentType: \"subagent\"`. This recursion is what gives the tree its nesting.\n- `traceWorkflowStage` (line 1089) traces one workflow stage as a \"Workflow step\" chain directly under the open Workflow run. Unlike subagents, stages get no per-stage Agent tool run.\n- `closeAgentToolRun` (line 1154) closes Agent or Workflow runs that were left open. If the run was never posted, for example because the subagent was killed, it creates it already closed so the trace still shows the agent was launched.\n\n## Design points that tie it together\n\n- **Runs are opened and closed separately.** A run is posted open first and closed later with `patchRun({ excludeInputs: true })`. This is what lets separate hook processes each own part of a run's lifecycle.\n- **Run IDs come from timestamps** (`uuid7FromTime`), and parent/child links are explicit through `trace_id`, `parent_run_id` and `dotted_order`. So runs created in different processes still land in the right place in the tree.\n- **Metadata is uniform.** Every run gets its metadata from `codingAgentMetadata` (session, turn ID and number, runtime version, agent role, tool or skill name).\n- **Tracing detail is set per turn and per tool.** The level (for example full or metadata-only) is passed through `createRunTree` from `./privacy.js`. A tool can be traced with less detail than its turn but never more: a metadata-only turn stays metadata-only for all its tools."
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0,
+    "full_reads": 1,
+    "partial_read_limits": []
+  }
+}
