@@ -31,7 +31,6 @@ jobs:
             plugins/langsmith-shunt/scripts/bulk-read \
             plugins/langsmith-shunt/scripts/code-write \
             plugins/langsmith-shunt/scripts/lib/*.sh \
-            plugins/langsmith-setup/scripts/doctor \
             tests/*.sh
       - uses: actions/setup-node@v4
         with:
@@ -40,5 +39,4 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
           claude plugin validate .
-          claude plugin validate plugins/langsmith-setup
           claude plugin validate plugins/langsmith-shunt

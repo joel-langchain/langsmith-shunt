@@ -13,6 +13,6 @@ Derived from shunt, with changes:
   plugins/langsmith-shunt/skills/bulk-reader/SKILL.md
   plugins/langsmith-shunt/skills/code-writer/SKILL.md
 
-The changes are listed in plugins/langsmith-shunt/README.md, under
-"Changes from Spotify's shunt". The worker-model transport, LangSmith run
-recording, savings report, and tests are new.
+The changes are listed in README.md, under "Changes from Spotify's shunt".
+The worker-model transport, LangSmith run recording, savings report, and
+tests are new.
