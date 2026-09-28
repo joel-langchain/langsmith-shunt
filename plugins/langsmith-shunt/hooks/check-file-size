@@ -1,4 +1,5 @@
 #!/bin/bash
+# Based on shunt from spotify/portal-ai-plugins (Apache-2.0), rewritten with changes. See NOTICE.
 # PreToolUse hook for Read. Denies a full read of a text file longer than
 # SHUNT_MIN_LINES and points Claude at the bulk-reader skill instead.
 # Reads with an offset or limit pass, since Claude already knows which

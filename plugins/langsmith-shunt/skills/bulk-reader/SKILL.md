@@ -3,6 +3,8 @@ name: bulk-reader
 description: Ask a cheaper model a question about large files instead of reading them into context. Use for files over 350 lines, questions that span three or more files, or summarising a large diff, and whenever a Read or cat was denied for file size.
 ---
 
+<!-- Based on the bulk-reader skill in shunt from spotify/portal-ai-plugins (Apache-2.0), with changes. See NOTICE. -->
+
 Run:
 
 ```bash

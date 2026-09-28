@@ -1,4 +1,5 @@
 #!/bin/bash
+# Based on shunt from spotify/portal-ai-plugins (Apache-2.0), rewritten with changes. See NOTICE.
 # PreToolUse hook for Bash. Catches cat, less, more, head, and tail commands
 # that would print more than SHUNT_MIN_LINES lines of files into the context,
 # which would otherwise get around the Read hook.

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Based on shunt from spotify/portal-ai-plugins (Apache-2.0), rewritten with changes. See NOTICE.
 # Sends files and a question to the worker model and prints only the answer,
 # so the files never enter Claude's context.
 #

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Based on shunt from spotify/portal-ai-plugins (Apache-2.0), rewritten with changes. See NOTICE.
 # Has the worker model write one file from a spec and reference files. With
 # --target the result goes straight to disk and Claude never reads it.
 #

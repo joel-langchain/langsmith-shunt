@@ -3,6 +3,8 @@ name: code-writer
 description: Have a cheaper model write a file that follows an existing one, such as tests in the style of an existing test file, fixtures, config stubs, or handlers that repeat a pattern. Use when the new file is mostly pattern-following rather than new logic.
 ---
 
+<!-- Based on the code-writer skill in shunt from spotify/portal-ai-plugins (Apache-2.0), with changes. See NOTICE. -->
+
 Run:
 
 ```bash
