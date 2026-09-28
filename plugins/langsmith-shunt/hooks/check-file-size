@@ -1,0 +1,28 @@
+#!/bin/bash
+# PreToolUse hook for Read. Denies a full read of a text file longer than
+# SHUNT_MIN_LINES and points Claude at the bulk-reader skill instead.
+# Reads with an offset or limit pass, since Claude already knows which
+# section it needs.
+
+# shellcheck source=plugins/langsmith-shunt/scripts/lib/hook.sh
+. "$(cd "$(dirname "$0")/.." && pwd)/scripts/lib/hook.sh"
+
+input=$(cat)
+shunt_hooks_enabled || exit 0
+
+file_path=$(jq -r '.tool_input.file_path // empty' <<<"$input")
+offset=$(jq -r '.tool_input.offset // empty' <<<"$input")
+limit=$(jq -r '.tool_input.limit // empty' <<<"$input")
+cwd=$(jq -r '.cwd // empty' <<<"$input")
+
+if [ -n "$offset" ] || [ -n "$limit" ]; then
+  exit 0
+fi
+
+path=$(shunt_resolve_path "$file_path" "$cwd") || exit 0
+shunt_is_text "$path" || exit 0
+
+lines=$(shunt_line_count "$path")
+[ "${lines:-0}" -gt "$SHUNT_MIN_LINES" ] || exit 0
+
+shunt_deny "$file_path is $lines lines (limit $SHUNT_MIN_LINES for a full read). To understand it, use the bulk-reader skill, which sends the file to a cheaper model and returns only the answer. To edit it, Read again with offset and limit for the section you need."

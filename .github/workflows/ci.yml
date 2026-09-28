@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: bash tests/run.sh
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          shellcheck -x -s bash \
+            plugins/langsmith-shunt/hooks/check-file-size \
+            plugins/langsmith-shunt/hooks/check-bash-read \
+            plugins/langsmith-shunt/scripts/bulk-read \
+            plugins/langsmith-shunt/scripts/code-write \
+            plugins/langsmith-shunt/scripts/lib/*.sh \
+            plugins/langsmith-setup/scripts/doctor \
+            tests/*.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate plugins
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate .
+          claude plugin validate plugins/langsmith-setup
+          claude plugin validate plugins/langsmith-shunt

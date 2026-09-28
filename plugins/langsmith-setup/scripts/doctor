@@ -1,0 +1,164 @@
+#!/bin/bash
+# Read-only checks for the LangSmith Claude Code setup. Prints one line per
+# check and never prints a key.
+#
+# Usage: doctor [--offline] [--live]
+#   --offline  skip every network check
+#   --live     also send one request with max_tokens 1 to the worker model,
+#              which costs a few tokens
+
+offline=""
+live=""
+for arg in "$@"; do
+  case "$arg" in
+    --offline) offline=1 ;;
+    --live) live=1 ;;
+    -h | --help)
+      sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+  esac
+done
+
+fails=0
+warns=0
+ok() { printf 'ok    %s\n' "$1"; }
+warn() {
+  printf 'warn  %s\n' "$1"
+  warns=$((warns + 1))
+}
+fail() {
+  printf 'fail  %s\n' "$1"
+  fails=$((fails + 1))
+}
+section() { printf '\n%s\n' "$1"; }
+
+tmpfiles=()
+headers=""
+trap 'rm -f "${tmpfiles[@]}"' EXIT
+# Writes a curl header file so keys stay out of the process list.
+#   header_file <varname> <header line>...
+header_file() {
+  local var="$1" f
+  shift
+  f=$(mktemp)
+  chmod 600 "$f"
+  tmpfiles+=("$f")
+  printf '%s\n' "$@" >"$f"
+  printf -v "$var" '%s' "$f"
+}
+
+endpoint="${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
+endpoint="${endpoint%/}"
+trace_key="${CC_LANGSMITH_API_KEY:-${LANGSMITH_API_KEY:-}}"
+worker_key="${SHUNT_API_KEY:-${LANGSMITH_API_KEY:-${CC_LANGSMITH_API_KEY:-}}}"
+
+section "Tools"
+for tool in jq curl python3 node; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    ok "$tool"
+  else
+    case "$tool" in
+      jq | curl) fail "$tool not found. langsmith-shunt needs it." ;;
+      python3) warn "python3 not found. The savings report needs it." ;;
+      node) warn "node not found. langsmith-tracing needs Node.js 18 or later." ;;
+    esac
+  fi
+done
+if command -v langsmith >/dev/null 2>&1; then
+  ok "langsmith CLI $(langsmith --version 2>/dev/null | head -1)"
+else
+  warn "langsmith CLI not found. langsmith-skills uses it. Install: curl -sSL https://raw.githubusercontent.com/langchain-ai/langsmith-cli/main/scripts/install.sh | sh"
+fi
+
+section "Environment"
+if [ "${TRACE_TO_LANGSMITH:-}" = true ]; then
+  ok "TRACE_TO_LANGSMITH=true"
+else
+  warn "TRACE_TO_LANGSMITH is not true, so langsmith-tracing records nothing."
+fi
+if [ -n "$trace_key" ]; then
+  ok "LangSmith key set ($([ -n "${CC_LANGSMITH_API_KEY:-}" ] && echo CC_LANGSMITH_API_KEY || echo LANGSMITH_API_KEY))"
+else
+  fail "No LangSmith key. Set CC_LANGSMITH_API_KEY (tracing) or LANGSMITH_API_KEY."
+fi
+ok "LangSmith project: ${SHUNT_LANGSMITH_PROJECT:-${CC_LANGSMITH_PROJECT:-${LANGSMITH_PROJECT:-claude-code (default)}}}"
+ok "LangSmith endpoint: $endpoint"
+case "$endpoint" in
+  *eu.api.smith.langchain.com*)
+    case "${LANGSMITH_MCP_URL:-}" in
+      *eu.api.smith.langchain.com*) ok "LANGSMITH_MCP_URL points at EU" ;;
+      *) warn "Endpoint is EU but LANGSMITH_MCP_URL is not. Set LANGSMITH_MCP_URL=https://eu.api.smith.langchain.com/mcp" ;;
+    esac
+    ;;
+esac
+ok "Worker: ${SHUNT_PROVIDER:-anthropic} ${SHUNT_MODEL:-claude-haiku-4-5-20251001 (default)}, lines limit ${SHUNT_MIN_LINES:-350}"
+[ -n "$worker_key" ] || fail "No key for the worker model. Set SHUNT_API_KEY or LANGSMITH_API_KEY."
+case "${SHUNT_DISABLED:-}" in 1 | true | TRUE | yes) warn "SHUNT_DISABLED is set, so the file-size hooks do nothing." ;; esac
+
+section "Plugins"
+enabled=""
+for f in "$HOME/.claude/settings.json" ".claude/settings.json" ".claude/settings.local.json"; do
+  [ -f "$f" ] || continue
+  enabled="$enabled
+$(jq -r '(.enabledPlugins // {}) | to_entries[] | select(.value == true) | .key' "$f" 2>/dev/null)"
+done
+tracing_count=0
+for plugin in langsmith-tracing langsmith-skills langchain-skills langsmith-setup langsmith-shunt; do
+  match=$(printf '%s\n' "$enabled" | grep -c "^$plugin@" || true)
+  if [ "$match" -gt 0 ]; then
+    ok "$plugin enabled"
+  else
+    warn "$plugin not enabled"
+  fi
+  [ "$plugin" = langsmith-tracing ] && tracing_count=$match
+done
+if [ "$tracing_count" -gt 1 ]; then
+  warn "langsmith-tracing is enabled from more than one marketplace, so each session is traced more than once."
+fi
+
+if [ -n "$offline" ]; then
+  section "Network (skipped)"
+else
+  section "Network"
+  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$endpoint/info")
+  if [ "$status" = 200 ]; then ok "$endpoint reachable"; else fail "$endpoint/info returned HTTP ${status:-none}"; fi
+
+  if [ -n "$trace_key" ]; then
+    header_file headers "x-api-key: $trace_key"
+    status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H @"$headers" "$endpoint/sessions?limit=1")
+    case "$status" in
+      200) ok "LangSmith key accepted" ;;
+      401 | 403) fail "LangSmith key rejected (HTTP $status). Check the key and that it belongs to $endpoint." ;;
+      *) warn "Could not check the LangSmith key (HTTP ${status:-none})" ;;
+    esac
+  fi
+
+  if [ -n "$live" ] && [ -n "$worker_key" ]; then
+    case "$endpoint" in *eu.api.smith.langchain.com*) gw=https://eu.gateway.smith.langchain.com ;; *) gw=https://gateway.smith.langchain.com ;; esac
+    provider="${SHUNT_PROVIDER:-anthropic}"
+    if [ "$provider" = anthropic ]; then
+      url="${SHUNT_BASE_URL:-$gw/anthropic}/v1/messages"
+      header_file headers "x-api-key: $worker_key" "anthropic-version: 2023-06-01" "content-type: application/json"
+      body=$(jq -n --arg m "${SHUNT_MODEL:-claude-haiku-4-5-20251001}" '{model: $m, max_tokens: 1, messages: [{role: "user", content: "ok"}]}')
+    else
+      url="${SHUNT_BASE_URL:-$gw/openai/v1}/chat/completions"
+      header_file headers "authorization: Bearer $worker_key" "content-type: application/json"
+      body=$(jq -n --arg m "${SHUNT_MODEL:-}" '{model: $m, max_completion_tokens: 1, messages: [{role: "user", content: "ok"}]}')
+    fi
+    response=$(mktemp)
+    tmpfiles+=("$response")
+    status=$(curl -s -o "$response" -w '%{http_code}' --max-time 30 -H @"$headers" --data-binary "$body" "$url")
+    if [ "$status" = 200 ]; then
+      ok "Worker model answered ($url)"
+    else
+      msg=$(jq -r '.error.message // .error // .detail // empty' "$response" 2>/dev/null | head -c 300)
+      fail "Worker model returned HTTP ${status:-none}${msg:+: $msg}"
+    fi
+  elif [ -z "$live" ]; then
+    printf '      (run with --live to test the worker model)\n'
+  fi
+fi
+
+printf '\n%d failed, %d warnings\n' "$fails" "$warns"
+[ "$fails" -eq 0 ]

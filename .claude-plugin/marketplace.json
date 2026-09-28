@@ -1,0 +1,51 @@
+{
+  "name": "langsmith-claude-code",
+  "description": "A Claude Code setup for building with LangSmith: tracing, LangSmith and LangChain skills, MCP servers, and token-saving delegation measured in LangSmith.",
+  "owner": {
+    "name": "Joel Strickland"
+  },
+  "plugins": [
+    {
+      "name": "langsmith-setup",
+      "source": "./plugins/langsmith-setup",
+      "description": "LangSmith and LangChain docs MCP servers, a guided setup, and a read-only doctor.",
+      "category": "developer-tools"
+    },
+    {
+      "name": "langsmith-shunt",
+      "source": "./plugins/langsmith-shunt",
+      "description": "Hooks send large file reads to a cheaper model through the LangSmith LLM Gateway, with every delegation recorded as a LangSmith run.",
+      "category": "developer-tools"
+    },
+    {
+      "name": "langsmith-tracing",
+      "source": {
+        "source": "github",
+        "repo": "langchain-ai/langsmith-claude-code-plugins"
+      },
+      "description": "LangChain's plugin that traces Claude Code sessions, tool calls, subagents, and compaction to LangSmith.",
+      "homepage": "https://github.com/langchain-ai/langsmith-claude-code-plugins",
+      "category": "developer-tools"
+    },
+    {
+      "name": "langsmith-skills",
+      "source": {
+        "source": "github",
+        "repo": "langchain-ai/langsmith-skills"
+      },
+      "description": "LangChain's skills for traces, datasets, evaluators, and custom apps in LangSmith.",
+      "homepage": "https://github.com/langchain-ai/langsmith-skills",
+      "category": "developer-tools"
+    },
+    {
+      "name": "langchain-skills",
+      "source": {
+        "source": "github",
+        "repo": "langchain-ai/langchain-skills"
+      },
+      "description": "LangChain's skills for building agents with LangChain, LangGraph, and Deep Agents.",
+      "homepage": "https://github.com/langchain-ai/langchain-skills",
+      "category": "developer-tools"
+    }
+  ]
+}

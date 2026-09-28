@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "langsmith": {
+      "type": "http",
+      "url": "${LANGSMITH_MCP_URL:-https://api.smith.langchain.com/mcp}"
+    },
+    "langchain-docs": {
+      "type": "http",
+      "url": "https://docs.langchain.com/mcp"
+    }
+  }
+}

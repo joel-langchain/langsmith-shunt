@@ -1,0 +1,116 @@
+#!/bin/bash
+# PreToolUse hook for Bash. Catches cat, less, more, head, and tail commands
+# that would print more than SHUNT_MIN_LINES lines of files into the context,
+# which would otherwise get around the Read hook.
+#
+# Pipes, redirects, and substitutions pass: `cat file | grep x` and
+# `cat a > b` do not put the whole file into the context. head and tail are
+# counted by the lines they print, not the size of the file. Commands the
+# hook cannot parse also pass.
+
+# shellcheck source=plugins/langsmith-shunt/scripts/lib/hook.sh
+. "$(cd "$(dirname "$0")/.." && pwd)/scripts/lib/hook.sh"
+
+input=$(cat)
+shunt_hooks_enabled || exit 0
+
+command=$(jq -r '.tool_input.command // empty' <<<"$input")
+base=$(jq -r '.cwd // empty' <<<"$input")
+[ -z "$command" ] && exit 0
+
+# shellcheck disable=SC2016  # literal $( and backtick, not expansions
+case "$command" in *'|'* | *'>'* | *'<'* | *'$('* | *'`'*) exit 0 ;; esac
+
+unquote() {
+  local w="$1"
+  w="${w#\"}" w="${w%\"}"
+  w="${w#\'}" w="${w%\'}"
+  printf '%s' "$w"
+}
+
+total=0
+first_path=""
+
+# Lines printed by head or tail for one file.
+#   $1 head|tail  $2 count as given (N, +N, -N)  $3 file length in lines
+printed_lines() {
+  local cmd="$1" count="$2" len="$3" mode=last num
+  num="$count"
+  case "$count" in
+    +*) mode=from num="${count#+}" ;;
+    -*) mode=allbut num="${count#-}" ;;
+  esac
+  case "$num" in '' | *[!0-9]*) return 1 ;; esac
+  if [ "$cmd" = head ] && [ "$mode" = allbut ]; then
+    echo $((len > num ? len - num : 0))
+  elif [ "$cmd" = tail ] && [ "$mode" = from ]; then
+    echo $((len - num + 1 > 0 ? len - num + 1 : 0))
+  else
+    echo $((num < len ? num : len))
+  fi
+}
+
+segments="${command//&&/$'\n'}"
+segments="${segments//;/$'\n'}"
+
+while IFS= read -r segment; do
+  read -ra words <<<"$segment"
+  [ ${#words[@]} -eq 0 ] && continue
+  cmd="${words[0]##*/}"
+  args=("${words[@]:1}")
+
+  case "$cmd" in
+    cd)
+      dir=$(unquote "${args[0]:-}")
+      case "$dir" in
+        "") base="$HOME" ;;
+        "~"*) base="$HOME${dir#\~}" ;;
+        /*) base="$dir" ;;
+        *) base="$base/$dir" ;;
+      esac
+      ;;
+
+    cat | less | more)
+      for a in "${args[@]}"; do
+        a=$(unquote "$a")
+        case "$a" in -*) continue ;; esac
+        p=$(shunt_resolve_path "$a" "$base") || continue
+        shunt_is_text "$p" || continue
+        total=$((total + $(shunt_line_count "$p")))
+        [ -z "$first_path" ] && first_path="$a"
+      done
+      ;;
+
+    head | tail)
+      count=10 skip="" expect="" files=()
+      for a in "${args[@]}"; do
+        a=$(unquote "$a")
+        if [ -n "$expect" ]; then
+          count="$a" expect=""
+          continue
+        fi
+        case "$a" in
+          -n | --lines) expect=1 ;;
+          --lines=*) count="${a#--lines=}" ;;
+          -n*) count="${a#-n}" ;;
+          -c* | --bytes* | -f | -F | --follow*) skip=1 ;;
+          -[0-9]*) count="${a#-}" ;;
+          -*) ;;
+          *) files+=("$a") ;;
+        esac
+      done
+      [ -n "$skip" ] && continue
+      for f in "${files[@]}"; do
+        p=$(shunt_resolve_path "$f" "$base") || continue
+        shunt_is_text "$p" || continue
+        shown=$(printed_lines "$cmd" "$count" "$(shunt_line_count "$p")") || continue
+        total=$((total + shown))
+        [ -z "$first_path" ] && first_path="$f"
+      done
+      ;;
+  esac
+done <<<"$segments"
+
+[ "$total" -gt "$SHUNT_MIN_LINES" ] || exit 0
+
+shunt_deny "This command prints about $total lines from $first_path (limit $SHUNT_MIN_LINES). To understand the file, use the bulk-reader skill, which sends it to a cheaper model and returns only the answer. For specific lines, use grep, or Read with offset and limit."

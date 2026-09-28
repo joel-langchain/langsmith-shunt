@@ -1,0 +1,101 @@
+#!/bin/bash
+# Sends files and a question to the worker model and prints only the answer,
+# so the files never enter Claude's context.
+#
+# Usage: bulk-read --question "What does this module export?" --paths a.ts [b.ts ...]
+
+# shellcheck source=plugins/langsmith-shunt/scripts/lib/worker.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/worker.sh"
+
+usage() {
+  echo 'Usage: bulk-read --question "<question>" --paths <file> [<file> ...]' >&2
+}
+
+question=""
+paths=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --question)
+      question="${2:-}"
+      shift
+      [ $# -gt 0 ] && shift
+      ;;
+    --paths)
+      shift
+      while [ $# -gt 0 ] && [[ "$1" != --* ]]; do
+        paths+=("$1")
+        shift
+      done
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown argument '$1'" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$question" ] || [ ${#paths[@]} -eq 0 ]; then
+  usage
+  exit 1
+fi
+
+# A mistyped path would reach the model as an empty file and get a confident
+# answer about nothing, so stop instead.
+for path in "${paths[@]}"; do
+  if [ ! -f "$path" ] || [ ! -r "$path" ]; then
+    echo "Error: file not found or unreadable: $path" >&2
+    exit 1
+  fi
+done
+
+system_file=""
+message_file=""
+shunt_preflight || exit 1
+shunt_tmpfile system_file || exit 1
+shunt_tmpfile message_file || exit 1
+
+cat >"$system_file" <<'EOF'
+You are a precise code analyst. Read the files provided and answer the question.
+Each file line is prefixed with its line number and a tab.
+Answer in structured bullets only: no greeting, no preamble, no closing summary.
+Start each bullet with the exact name, type, or line number it refers to.
+Use nested bullets for detail. Leave out anything the question does not ask for.
+If the files do not contain the answer, say so in one bullet.
+EOF
+
+# Line numbers match what Claude's Read tool would have shown, so the answer
+# can cite lines that a targeted Read then opens.
+total_lines=0
+total_bytes=0
+for path in "${paths[@]}"; do
+  {
+    printf '<file path="%s">\n' "$path"
+    awk '{ printf "%6d\t%s\n", NR, $0 }' "$path"
+    printf '</file>\n\n'
+  } >>"$message_file"
+  total_lines=$((total_lines + $(wc -l <"$path" | tr -d ' ')))
+  total_bytes=$((total_bytes + $(wc -c <"$path" | tr -d ' ')))
+done
+printf 'Question: %s\n' "$question" >>"$message_file"
+
+start=$(shunt_now)
+shunt_call "$system_file" "$message_file" || exit 1
+end=$(shunt_now)
+
+cat "$SHUNT_TEXT_FILE"
+echo
+
+inputs=$(printf '%s\n' "${paths[@]}" | jq -R . | jq -s \
+  --arg question "$question" \
+  --argjson lines "$total_lines" \
+  --argjson bytes "$total_bytes" \
+  '{question: $question, paths: ., file_lines: $lines, file_bytes: $bytes}')
+outputs=$(jq -n --rawfile answer "$SHUNT_TEXT_FILE" '{answer: $answer}')
+shunt_trace "shunt:bulk-read" "$inputs" "$outputs" "$start" "$end"
+
+echo "[langsmith-shunt: $SHUNT_MODEL read $SHUNT_INPUT_TOKENS tokens and returned $SHUNT_OUTPUT_TOKENS${SHUNT_RUN_ID:+ | LangSmith run $SHUNT_RUN_ID}]" >&2

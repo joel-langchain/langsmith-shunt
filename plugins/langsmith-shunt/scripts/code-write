@@ -1,0 +1,128 @@
+#!/bin/bash
+# Has the worker model write one file from a spec and reference files. With
+# --target the result goes straight to disk and Claude never reads it.
+#
+# Usage: code-write --spec "Unit tests for UserService" --reference tests/order.test.ts \
+#          [--reference src/user.ts ...] [--target tests/user.test.ts] [--overwrite]
+
+# shellcheck source=plugins/langsmith-shunt/scripts/lib/worker.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/worker.sh"
+
+usage() {
+  echo 'Usage: code-write --spec "<spec>" --reference <file> [--reference <file> ...] [--target <file>] [--overwrite]' >&2
+}
+
+spec=""
+target=""
+overwrite=""
+references=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --spec | --reference | --target)
+      flag="$1"
+      value="${2:-}"
+      shift
+      [ $# -gt 0 ] && shift
+      case "$flag" in
+        --spec) spec="$value" ;;
+        --reference) references+=("$value") ;;
+        --target) target="$value" ;;
+      esac
+      ;;
+    --overwrite)
+      overwrite=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown argument '$1'" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$spec" ]; then
+  usage
+  exit 1
+fi
+
+# Without a reference the worker writes code that matches nothing in the
+# project, so one is required. For a follow-up, reference the file the last
+# call wrote.
+if [ ${#references[@]} -eq 0 ]; then
+  echo "Error: --reference is required. Pass a file whose patterns the output should follow." >&2
+  exit 1
+fi
+for ref in "${references[@]}"; do
+  if [ ! -f "$ref" ] || [ ! -r "$ref" ]; then
+    echo "Error: reference file not found or unreadable: $ref" >&2
+    exit 1
+  fi
+done
+if [ -n "$target" ] && [ -e "$target" ] && [ -z "$overwrite" ]; then
+  echo "Error: $target already exists. Pass --overwrite to replace it." >&2
+  exit 1
+fi
+
+system_file=""
+message_file=""
+code_file=""
+shunt_preflight || exit 1
+shunt_tmpfile system_file || exit 1
+shunt_tmpfile message_file || exit 1
+
+cat >"$system_file" <<'EOF'
+You write one code file from a spec and one or more reference files.
+Follow the reference files' patterns, conventions, naming, and style exactly.
+Output only the contents of the file: no explanation and no markdown fences.
+Where the spec is ambiguous, choose what fits the reference files.
+EOF
+
+{
+  printf 'Spec: %s\n\n' "$spec"
+  for ref in "${references[@]}"; do
+    printf '<reference path="%s">\n' "$ref"
+    cat "$ref"
+    printf '</reference>\n\n'
+  done
+  [ -n "$target" ] && printf 'The output will be saved as %s.\n' "$target"
+} >"$message_file"
+
+start=$(shunt_now)
+shunt_call "$system_file" "$message_file" || exit 1
+end=$(shunt_now)
+
+# Drop a fence around the whole answer if the model added one anyway. Fences
+# inside the file are left alone.
+shunt_tmpfile code_file || exit 1
+awk '
+  { lines[NR] = $0 }
+  END {
+    first = 1; last = NR
+    if (lines[first] ~ /^```/) first++
+    if (last >= first && lines[last] ~ /^```[[:space:]]*$/) last--
+    for (i = first; i <= last; i++) print lines[i]
+  }
+' "$SHUNT_TEXT_FILE" >"$code_file"
+written=$(wc -l <"$code_file" | tr -d ' ')
+
+if [ -n "$target" ]; then
+  mkdir -p "$(dirname "$target")"
+  cp "$code_file" "$target"
+  echo "Wrote $written lines to $target"
+else
+  cat "$code_file"
+fi
+
+inputs=$(printf '%s\n' "${references[@]}" | jq -R . | jq -s \
+  --arg spec "$spec" --arg target "$target" \
+  '{spec: $spec, references: ., target: $target}')
+outputs=$(jq -n --argjson lines "$written" --arg target "$target" \
+  '{lines_written: $lines, target: $target}')
+shunt_trace "shunt:code-write" "$inputs" "$outputs" "$start" "$end"
+
+echo "[langsmith-shunt: $SHUNT_MODEL read $SHUNT_INPUT_TOKENS tokens and wrote $SHUNT_OUTPUT_TOKENS${SHUNT_RUN_ID:+ | LangSmith run $SHUNT_RUN_ID}]" >&2

@@ -1,0 +1,18 @@
+langsmith-claude-code
+Copyright 2026 Joel Strickland
+
+The langsmith-shunt plugin follows the design of shunt, part of
+spotify/portal-ai-plugins (https://github.com/spotify/portal-ai-plugins),
+Copyright Spotify AB, licensed under the Apache License, Version 2.0.
+
+Derived from shunt, with changes:
+  plugins/langsmith-shunt/hooks/check-file-size
+  plugins/langsmith-shunt/hooks/check-bash-read
+  plugins/langsmith-shunt/scripts/bulk-read
+  plugins/langsmith-shunt/scripts/code-write
+  plugins/langsmith-shunt/skills/bulk-reader/SKILL.md
+  plugins/langsmith-shunt/skills/code-writer/SKILL.md
+
+The changes are listed in plugins/langsmith-shunt/README.md, under
+"Changes from Spotify's shunt". The worker-model transport, LangSmith run
+recording, savings report, and tests are new.
