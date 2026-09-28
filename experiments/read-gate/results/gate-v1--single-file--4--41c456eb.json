@@ -1,0 +1,82 @@
+{
+  "arm": "gate-v1",
+  "task": "single-file",
+  "rep": 4,
+  "order": 26,
+  "run_id": "gate-v1--single-file--4--41c456eb",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790604782.605773,
+  "duration_s": 16.2,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "115bde17-2be9-4b55-9f2a-35db80c525d3",
+    "total_cost_usd": 0.1005414,
+    "num_turns": 2,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 11924,
+      "cache_read_input_tokens": 95627,
+      "output_tokens": 1089,
+      "output_tokens_details": {
+        "thinking_tokens": 336
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 11924
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 828,
+          "cache_read_input_tokens": 52580,
+          "cache_creation_input_tokens": 2391,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 2391,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 1089,
+        "cacheReadInputTokens": 95627,
+        "cacheCreationInputTokens": 11924,
+        "webSearchRequests": 0,
+        "costUSD": 0.1005414,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 336,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 15574,
+    "result": "Every function below calls `createRunTree` directly. Each `run_type` is a fixed string, not a variable. I found this by searching `langsmith.ts` for the calls and matching each one to the function it sits in. The `run_type: \"tool\"` at line 950 is inside a comment, so I didn't count it.\n\n| Function | Line of call | `run_type` |\n|---|---|---|\n| `traceTurn` | 247 | `\"chain\"` |\n| | 301 | `\"llm\"` |\n| | 359 | `\"tool\"` |\n| | 409 | `\"llm\"` |\n| | 471 | `\"chain\"` |\n| `patchTurnRun` | 544 | `\"chain\"` |\n| `tracePendingSubagents` | 925 | `\"tool\"` |\n| `traceSubagentChain` | 1028 | `\"chain\"` |\n| `closeAgentToolRun` | 1185 | `\"tool\"` |\n\nSome functions reach `createRunTree` only through other functions: `completeTurnRun`, `closeTurnRun`, `closeInterruptedTurn` and `traceWorkflowStage`. They're left out because they don't call it themselves.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

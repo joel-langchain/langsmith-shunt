@@ -1,0 +1,83 @@
+{
+  "arm": "gate-v1",
+  "task": "cross-file",
+  "rep": 3,
+  "order": 38,
+  "run_id": "gate-v1--cross-file--3--8df4b7df",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790604835.336073,
+  "duration_s": 18.8,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "eb768afb-6e91-41fa-8578-f23f27cea9d3",
+    "total_cost_usd": 0.11028500000000001,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 10958,
+      "cache_read_input_tokens": 149455,
+      "output_tokens": 1279,
+      "output_tokens_details": {
+        "thinking_tokens": 111
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 10958
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 902,
+          "cache_read_input_tokens": 53805,
+          "cache_creation_input_tokens": 200,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 200,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1279,
+        "cacheReadInputTokens": 149455,
+        "cacheCreationInputTokens": 10958,
+        "webSearchRequests": 0,
+        "costUSD": 0.11028500000000001,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 111,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 18199,
+    "result": "All four files exist. Three of them export functions. `stop.ts` has none: its only function is a non-exported `async function main()`, and the file has no `export` statements.\n\n**langsmith.ts** (13)\n- `initTracing`\n- `flushPendingTraces` (async)\n- `generateDottedOrderSegment`\n- `parseDottedOrder`\n- `traceTurn` (async)\n- `turnIdentityFromOpenTurn`\n- `completeTurnRun` (async)\n- `closeTurnRun` (async)\n- `closeInterruptedTurn` (async)\n- `tracePendingSubagents` (async)\n- `traceWorkflowStage` (async)\n- `closeAgentToolRun` (async)\n\n**transcript.ts** (10)\n- `readTranscript`\n- `getTranscriptEndLine`\n- `readRuntimeVersion`\n- `isHumanMessage`\n- `isToolResult`\n- `isAssistantMessage`\n- `stripModelDateSuffix`\n- `resolveProvider`\n- `completedToolUseIds`\n- `groupIntoTurns`\n\n**stop.ts**: none\n\n**config.ts** (6)\n- `readAnthropicUserId`\n- `readLocalUsername`\n- `parseRepoName`\n- `getRepoName`\n- `getGitInfo`\n- `loadConfig`\n\nCorrection to the count above: `langsmith.ts` has 12 exported functions, not 13.\n\n```json\n{\n  \"langsmith.ts\": [\n    \"initTracing\",\n    \"flushPendingTraces\",\n    \"generateDottedOrderSegment\",\n    \"parseDottedOrder\",\n    \"traceTurn\",\n    \"turnIdentityFromOpenTurn\",\n    \"completeTurnRun\",\n    \"closeTurnRun\",\n    \"closeInterruptedTurn\",\n    \"tracePendingSubagents\",\n    \"traceWorkflowStage\",\n    \"closeAgentToolRun\"\n  ],\n  \"transcript.ts\": [\n    \"readTranscript\",\n    \"getTranscriptEndLine\",\n    \"readRuntimeVersion\",\n    \"isHumanMessage\",\n    \"isToolResult\",\n    \"isAssistantMessage\",\n    \"stripModelDateSuffix\",\n    \"resolveProvider\",\n    \"completedToolUseIds\",\n    \"groupIntoTurns\"\n  ],\n  \"stop.ts\": [],\n  \"config.ts\": [\n    \"readAnthropicUserId\",\n    \"readLocalUsername\",\n    \"parseRepoName\",\n    \"getRepoName\",\n    \"getGitInfo\",\n    \"loadConfig\"\n  ]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2,
+      "Glob": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

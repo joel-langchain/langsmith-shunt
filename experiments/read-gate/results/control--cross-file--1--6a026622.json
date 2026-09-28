@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "cross-file",
+  "rep": 1,
+  "order": 12,
+  "run_id": "control--cross-file--1--6a026622",
+  "plugin_dir": null,
+  "started": 1790604708.912378,
+  "duration_s": 20.0,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "8354fcaa-bb03-4401-bf2b-15b11b8b811a",
+    "total_cost_usd": 0.1226434,
+    "num_turns": 5,
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 10953,
+      "cache_read_input_tokens": 202832,
+      "output_tokens": 1364,
+      "output_tokens_details": {
+        "thinking_tokens": 101
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 10953
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 846,
+          "cache_read_input_tokens": 53771,
+          "cache_creation_input_tokens": 229,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 229,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 8,
+        "outputTokens": 1364,
+        "cacheReadInputTokens": 202832,
+        "cacheCreationInputTokens": 10953,
+        "webSearchRequests": 0,
+        "costUSD": 0.1226434,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 101,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 19386,
+    "result": "These counts match the first search, so the lists below are complete.\n\n**langsmith.ts** (12):\n- `initTracing`\n- `flushPendingTraces` (async)\n- `generateDottedOrderSegment`\n- `parseDottedOrder`\n- `traceTurn` (async)\n- `turnIdentityFromOpenTurn`\n- `completeTurnRun` (async)\n- `closeTurnRun` (async)\n- `closeInterruptedTurn` (async)\n- `tracePendingSubagents` (async)\n- `traceWorkflowStage` (async)\n- `closeAgentToolRun` (async)\n\n**transcript.ts** (10):\n- `readTranscript`\n- `getTranscriptEndLine`\n- `readRuntimeVersion`\n- `isHumanMessage`\n- `isToolResult`\n- `isAssistantMessage`\n- `stripModelDateSuffix`\n- `resolveProvider`\n- `completedToolUseIds`\n- `groupIntoTurns`\n\n**stop.ts** (0): it has no exported functions. The only function in it is `async function main()` at `stop.ts:40`, and it isn't exported.\n\n**config.ts** (6):\n- `readAnthropicUserId`\n- `readLocalUsername`\n- `parseRepoName`\n- `getRepoName`\n- `getGitInfo`\n- `loadConfig`\n\n```json\n{\n  \"langsmith.ts\": [\n    \"initTracing\",\n    \"flushPendingTraces\",\n    \"generateDottedOrderSegment\",\n    \"parseDottedOrder\",\n    \"traceTurn\",\n    \"turnIdentityFromOpenTurn\",\n    \"completeTurnRun\",\n    \"closeTurnRun\",\n    \"closeInterruptedTurn\",\n    \"tracePendingSubagents\",\n    \"traceWorkflowStage\",\n    \"closeAgentToolRun\"\n  ],\n  \"transcript.ts\": [\n    \"readTranscript\",\n    \"getTranscriptEndLine\",\n    \"readRuntimeVersion\",\n    \"isHumanMessage\",\n    \"isToolResult\",\n    \"isAssistantMessage\",\n    \"stripModelDateSuffix\",\n    \"resolveProvider\",\n    \"completedToolUseIds\",\n    \"groupIntoTurns\"\n  ],\n  \"stop.ts\": [],\n  \"config.ts\": [\n    \"readAnthropicUserId\",\n    \"readLocalUsername\",\n    \"parseRepoName\",\n    \"getRepoName\",\n    \"getGitInfo\",\n    \"loadConfig\"\n  ]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 3,
+      "Glob": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

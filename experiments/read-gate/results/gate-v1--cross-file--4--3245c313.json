@@ -1,0 +1,83 @@
+{
+  "arm": "gate-v1",
+  "task": "cross-file",
+  "rep": 4,
+  "order": 3,
+  "run_id": "gate-v1--cross-file--4--3245c313",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790604668.093354,
+  "duration_s": 18.1,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "98d74719-af14-49e1-81f7-1486b3805076",
+    "total_cost_usd": 0.1107318,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 10924,
+      "cache_read_input_tokens": 149439,
+      "output_tokens": 1310,
+      "output_tokens_details": {
+        "thinking_tokens": 110
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 10924
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 963,
+          "cache_read_input_tokens": 53793,
+          "cache_creation_input_tokens": 178,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 178,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1310,
+        "cacheReadInputTokens": 149439,
+        "cacheCreationInputTokens": 10924,
+        "webSearchRequests": 0,
+        "costUSD": 0.1107318,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 110,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 17352,
+    "result": "`stop.ts` has no exported functions. Its only function is `main()` at `stop.ts:40`, and it isn't exported.\n\n**langsmith.ts** (12)\n- `initTracing` (line 32)\n- `flushPendingTraces`, async (56)\n- `generateDottedOrderSegment` (76)\n- `parseDottedOrder` (99)\n- `traceTurn`, async (188)\n- `turnIdentityFromOpenTurn` (578)\n- `completeTurnRun`, async (605)\n- `closeTurnRun`, async (626)\n- `closeInterruptedTurn`, async (643)\n- `tracePendingSubagents`, async (828)\n- `traceWorkflowStage`, async (1089)\n- `closeAgentToolRun`, async (1154)\n\n**transcript.ts** (10)\n- `readTranscript` (29)\n- `getTranscriptEndLine` (122)\n- `readRuntimeVersion` (169)\n- `isHumanMessage` (205)\n- `isToolResult` (217)\n- `isAssistantMessage` (223)\n- `stripModelDateSuffix` (228)\n- `resolveProvider` (233)\n- `completedToolUseIds` (243)\n- `groupIntoTurns` (348)\n\n**stop.ts**: none\n\n**config.ts** (6)\n- `readAnthropicUserId` (44)\n- `readLocalUsername` (64)\n- `parseRepoName` (102)\n- `getRepoName` (128)\n- `getGitInfo` (161)\n- `loadConfig` (199)\n\n```json\n{\n  \"langsmith.ts\": [\n    \"initTracing\",\n    \"flushPendingTraces\",\n    \"generateDottedOrderSegment\",\n    \"parseDottedOrder\",\n    \"traceTurn\",\n    \"turnIdentityFromOpenTurn\",\n    \"completeTurnRun\",\n    \"closeTurnRun\",\n    \"closeInterruptedTurn\",\n    \"tracePendingSubagents\",\n    \"traceWorkflowStage\",\n    \"closeAgentToolRun\"\n  ],\n  \"transcript.ts\": [\n    \"readTranscript\",\n    \"getTranscriptEndLine\",\n    \"readRuntimeVersion\",\n    \"isHumanMessage\",\n    \"isToolResult\",\n    \"isAssistantMessage\",\n    \"stripModelDateSuffix\",\n    \"resolveProvider\",\n    \"completedToolUseIds\",\n    \"groupIntoTurns\"\n  ],\n  \"stop.ts\": [],\n  \"config.ts\": [\n    \"readAnthropicUserId\",\n    \"readLocalUsername\",\n    \"parseRepoName\",\n    \"getRepoName\",\n    \"getGitInfo\",\n    \"loadConfig\"\n  ]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2,
+      "Glob": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

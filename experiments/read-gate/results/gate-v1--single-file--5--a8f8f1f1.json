@@ -1,0 +1,83 @@
+{
+  "arm": "gate-v1",
+  "task": "single-file",
+  "rep": 5,
+  "order": 2,
+  "run_id": "gate-v1--single-file--5--a8f8f1f1",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790604668.091535,
+  "duration_s": 22.3,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "eb2ac6e8-83c4-44eb-80a7-0aa0a110b10a",
+    "total_cost_usd": 0.13822879999999999,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 16743,
+      "cache_read_input_tokens": 149649,
+      "output_tokens": 1228,
+      "output_tokens_details": {
+        "thinking_tokens": 219
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 16743
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 464,
+          "cache_read_input_tokens": 54016,
+          "cache_creation_input_tokens": 5774,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 5774,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1228,
+        "cacheReadInputTokens": 149649,
+        "cacheCreationInputTokens": 16743,
+        "webSearchRequests": 0,
+        "costUSD": 0.13822879999999999,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 219,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 21615,
+    "result": "Five functions call `createRunTree`, 11 times in total. Every call passes `run_type` as a string literal, and there are no nested helpers or aliases.\n\n- **`traceTurn`** (5 calls):\n  - line 247: `\"chain\"`, creating a standalone turn run\n  - line 301: `\"llm\"`, posting the assistant run\n  - line 359: `\"tool\"`, one run per tool call\n  - line 409: `\"llm\"`, patching the assistant run to complete it\n  - line 471: `\"chain\"`, completing the standalone turn run\n- **`patchTurnRun`** (line 544): `\"chain\"`\n- **`tracePendingSubagents`** (line 925): `\"tool\"`, for the deferred Agent/Task tool run\n- **`traceSubagentChain`** (line 1028): `\"chain\"`\n- **`closeAgentToolRun`** (line 1185): `\"tool\"`\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2,
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

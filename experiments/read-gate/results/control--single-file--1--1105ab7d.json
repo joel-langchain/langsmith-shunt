@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "single-file",
+  "rep": 1,
+  "order": 18,
+  "run_id": "control--single-file--1--1105ab7d",
+  "plugin_dir": null,
+  "started": 1790604742.343165,
+  "duration_s": 20.2,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "daed6fac-4420-42de-bbe5-24ffce77158c",
+    "total_cost_usd": 0.1119242,
+    "num_turns": 3,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 12282,
+      "cache_read_input_tokens": 149251,
+      "output_tokens": 1032,
+      "output_tokens_details": {
+        "thinking_tokens": 205
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 12282
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 572,
+          "cache_read_input_tokens": 53811,
+          "cache_creation_input_tokens": 1518,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 1518,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1032,
+        "cacheReadInputTokens": 149251,
+        "cacheCreationInputTokens": 12282,
+        "webSearchRequests": 0,
+        "costUSD": 0.1119242,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 205,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 19557,
+    "result": "Five functions in `langsmith.ts` call `createRunTree`. It's imported from `./privacy.js` (line 24).\n\n- **`traceTurn`** makes five calls:\n  - `\"chain\"` at line 253, which creates the turn run.\n  - `\"llm\"` at line 307, which starts the assistant run for each LLM call.\n  - `\"tool\"` at line 365, once per tool call.\n  - `\"llm\"` at line 414, which completes the assistant run.\n  - `\"chain\"` at line 476, which completes the turn run when the function created it.\n- **`patchTurnRun`**: `\"chain\"` at line 549.\n- **`tracePendingSubagents`**: `\"tool\"` at line 931, for the deferred Agent/Task tool run.\n- **`traceSubagentChain`**: `\"chain\"` at line 1034.\n- **`closeAgentToolRun`**: `\"tool\"` at line 1191.\n\nNo other function calls it. `traceWorkflowStage`, `completeTurnRun`, `closeTurnRun`, `closeInterruptedTurn` and the rest don't call it directly, though some of them may reach it by calling the functions above.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 1,
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

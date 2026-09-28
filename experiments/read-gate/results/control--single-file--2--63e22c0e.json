@@ -1,0 +1,82 @@
+{
+  "arm": "control",
+  "task": "single-file",
+  "rep": 2,
+  "order": 32,
+  "run_id": "control--single-file--2--63e22c0e",
+  "plugin_dir": null,
+  "started": 1790604815.9645572,
+  "duration_s": 18.2,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "e8317ec3-cf88-424e-bd02-54c7f038ed75",
+    "total_cost_usd": 0.10473900000000001,
+    "num_turns": 2,
+    "usage": {
+      "input_tokens": 4,
+      "cache_creation_input_tokens": 12351,
+      "cache_read_input_tokens": 95440,
+      "output_tokens": 1194,
+      "output_tokens_details": {
+        "thinking_tokens": 358
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 12351
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 899,
+          "cache_read_input_tokens": 52393,
+          "cache_creation_input_tokens": 3005,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 3005,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 4,
+        "outputTokens": 1194,
+        "cacheReadInputTokens": 95440,
+        "cacheCreationInputTokens": 12351,
+        "webSearchRequests": 0,
+        "costUSD": 0.10473900000000001,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 358,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 17669,
+    "result": "Six functions in `langsmith.ts` call `createRunTree` directly, and every call passes `run_type` as a string literal:\n\n- **`traceTurn`** (line 188) makes five calls:\n  - `\"chain\"` at line 253, for the turn run when it's created.\n  - `\"llm\"` at line 307, for the assistant LLM run when it starts.\n  - `\"tool\"` at line 365, once for each tool call.\n  - `\"llm\"` at line 414, for the assistant LLM run when it's finalized.\n  - `\"chain\"` at line 476, for the turn run when it's closed with its outputs or an \"Interrupted\" error.\n- **`patchTurnRun`** (line 537): `\"chain\"` at line 549.\n- **`tracePendingSubagents`** (line 828): `\"tool\"` at line 931, for a deferred Agent tool run.\n- **`traceSubagentChain`** (line 1005): `\"chain\"` at line 1034.\n- **`closeAgentToolRun`** (line 1154): `\"tool\"` at line 1191.\n\nSome other functions reach `createRunTree` only by calling one of these. For example, `completeTurnRun` and `closeTurnRun` probably go through `patchTurnRun`. I didn't check those call chains, and they aren't in the list or the JSON.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

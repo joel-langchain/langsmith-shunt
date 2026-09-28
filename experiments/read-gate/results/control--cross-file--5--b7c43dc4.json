@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "cross-file",
+  "rep": 5,
+  "order": 14,
+  "run_id": "control--cross-file--5--b7c43dc4",
+  "plugin_dir": null,
+  "started": 1790604722.244863,
+  "duration_s": 19.4,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "035e7ebe-a016-44cb-b52a-6fd78661b497",
+    "total_cost_usd": 0.11120560000000002,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 10797,
+      "cache_read_input_tokens": 149083,
+      "output_tokens": 1369,
+      "output_tokens_details": {
+        "thinking_tokens": 240
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 10797
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 966,
+          "cache_read_input_tokens": 53620,
+          "cache_creation_input_tokens": 224,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 224,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1369,
+        "cacheReadInputTokens": 149083,
+        "cacheCreationInputTokens": 10797,
+        "webSearchRequests": 0,
+        "costUSD": 0.11120560000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 240,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 18812,
+    "result": "Three of the four files export functions. `stop.ts` doesn't: its only function is `async function main()`, which isn't exported.\n\n**langsmith.ts** (13)\n- `initTracing`\n- `flushPendingTraces` (async)\n- `generateDottedOrderSegment`\n- `parseDottedOrder`\n- `traceTurn` (async)\n- `turnIdentityFromOpenTurn`\n- `completeTurnRun` (async)\n- `closeTurnRun` (async)\n- `closeInterruptedTurn` (async)\n- `tracePendingSubagents` (async)\n- `traceWorkflowStage` (async)\n- `closeAgentToolRun` (async)\n\n**transcript.ts** (10)\n- `readTranscript`\n- `getTranscriptEndLine`\n- `readRuntimeVersion`\n- `isHumanMessage`\n- `isToolResult`\n- `isAssistantMessage`\n- `stripModelDateSuffix`\n- `resolveProvider`\n- `completedToolUseIds`\n- `groupIntoTurns`\n\n**stop.ts**: none.\n\n**config.ts** (6)\n- `readAnthropicUserId`\n- `readLocalUsername`\n- `parseRepoName`\n- `getRepoName`\n- `getGitInfo`\n- `loadConfig`\n\n```json\n{\n  \"langsmith.ts\": [\n    \"initTracing\",\n    \"flushPendingTraces\",\n    \"generateDottedOrderSegment\",\n    \"parseDottedOrder\",\n    \"traceTurn\",\n    \"turnIdentityFromOpenTurn\",\n    \"completeTurnRun\",\n    \"closeTurnRun\",\n    \"closeInterruptedTurn\",\n    \"tracePendingSubagents\",\n    \"traceWorkflowStage\",\n    \"closeAgentToolRun\"\n  ],\n  \"transcript.ts\": [\n    \"readTranscript\",\n    \"getTranscriptEndLine\",\n    \"readRuntimeVersion\",\n    \"isHumanMessage\",\n    \"isToolResult\",\n    \"isAssistantMessage\",\n    \"stripModelDateSuffix\",\n    \"resolveProvider\",\n    \"completedToolUseIds\",\n    \"groupIntoTurns\"\n  ],\n  \"stop.ts\": [],\n  \"config.ts\": [\n    \"readAnthropicUserId\",\n    \"readLocalUsername\",\n    \"parseRepoName\",\n    \"getRepoName\",\n    \"getGitInfo\",\n    \"loadConfig\"\n  ]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2,
+      "Glob": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

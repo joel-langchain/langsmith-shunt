@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "single-file",
+  "rep": 5,
+  "order": 13,
+  "run_id": "control--single-file--5--89f094ea",
+  "plugin_dir": null,
+  "started": 1790604721.940795,
+  "duration_s": 20.4,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "4b5e944e-51a1-4bea-890a-80193781ab68",
+    "total_cost_usd": 0.1218918,
+    "num_turns": 3,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 13399,
+      "cache_read_input_tokens": 150864,
+      "output_tokens": 1235,
+      "output_tokens_details": {
+        "thinking_tokens": 238
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 13399
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 550,
+          "cache_read_input_tokens": 55426,
+          "cache_creation_input_tokens": 1020,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 1020,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1235,
+        "cacheReadInputTokens": 150864,
+        "cacheCreationInputTokens": 13399,
+        "webSearchRequests": 0,
+        "costUSD": 0.1218918,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 238,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 19821,
+    "result": "Six functions in `langsmith.ts` call `createRunTree`. It's imported from `./privacy.js` at line 24. Every call passes `run_type` as a hard-coded string, never a variable.\n\n| Function | Call sites | `run_type` values |\n|---|---|---|\n| `traceTurn` | `langsmith.ts:247`, `:301`, `:359`, `:409`, `:471` | `\"chain\"` (turn run at 247), `\"llm\"` (assistant run at 301), `\"tool\"` (tool run at 359), `\"llm\"` (assistant run again at 409, with end time), `\"chain\"` (turn run again at 471, with outputs and end time) |\n| `patchTurnRun` | `langsmith.ts:544` | `\"chain\"` |\n| `tracePendingSubagents` | `langsmith.ts:925` | `\"tool\"` (the deferred \"Agent\" tool run) |\n| `traceSubagentChain` | `langsmith.ts:1028` | `\"chain\"` |\n| `closeAgentToolRun` | `langsmith.ts:1185` | `\"tool\"` |\n\n`run_type \"tool\"` also appears at line 950, but that's only a comment inside the metadata of the `tracePendingSubagents` call, not a separate call.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 1,
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

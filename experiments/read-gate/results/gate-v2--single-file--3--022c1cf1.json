@@ -1,0 +1,82 @@
+{
+  "arm": "gate-v2",
+  "task": "single-file",
+  "rep": 3,
+  "order": 35,
+  "run_id": "gate-v2--single-file--3--022c1cf1",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v2/plugins/langsmith-shunt",
+  "started": 1790604827.399963,
+  "duration_s": 19.0,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "126f7ed4-0101-4a7d-8f1c-75cc0382d7df",
+    "total_cost_usd": 0.1110728,
+    "num_turns": 3,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 11525,
+      "cache_read_input_tokens": 149719,
+      "output_tokens": 1174,
+      "output_tokens_details": {
+        "thinking_tokens": 242
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 11525
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 533,
+          "cache_read_input_tokens": 54090,
+          "cache_creation_input_tokens": 482,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 482,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1174,
+        "cacheReadInputTokens": 149719,
+        "cacheCreationInputTokens": 11525,
+        "webSearchRequests": 0,
+        "costUSD": 0.1110728,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 242,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 18349,
+    "result": "Five functions in `langsmith.ts` call `createRunTree` directly. It's imported from `./privacy.js` at line 24. None of the calls are inside nested helper functions, and every `run_type` is a plain string literal.\n\n- **`traceTurn`** (line 188) calls it five times:\n  - `\"chain\"` at line 253\n  - `\"llm\"` at line 307, for each assistant LLM call\n  - `\"tool\"` at line 365, for each tool call\n  - `\"llm\"` at line 414\n  - `\"chain\"` at line 476, for the turn run, when `shouldCreateTurn` is true\n- **`patchTurnRun`** (line 537) passes `\"chain\"` at line 549.\n- **`tracePendingSubagents`** (line 828) passes `\"tool\"` at line 931, for a deferred subagent tool run.\n- **`traceSubagentChain`** (line 1005) passes `\"chain\"` at line 1034.\n- **`closeAgentToolRun`** (line 1154) passes `\"tool\"` at line 1191.\n\nLine 950 also mentions `run_type \"tool\"`, but it's only a comment, not a call.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

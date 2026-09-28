@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "single-file",
+  "rep": 3,
+  "order": 42,
+  "run_id": "control--single-file--3--e83211dc",
+  "plugin_dir": null,
+  "started": 1790604854.17027,
+  "duration_s": 20.3,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "ecb58c0c-6682-4d40-abb6-a434188ce3c3",
+    "total_cost_usd": 0.1320088,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 15111,
+      "cache_read_input_tokens": 149249,
+      "output_tokens": 1329,
+      "output_tokens_details": {
+        "thinking_tokens": 247
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 15111
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 692,
+          "cache_read_input_tokens": 53811,
+          "cache_creation_input_tokens": 4347,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 4347,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1329,
+        "cacheReadInputTokens": 149249,
+        "cacheCreationInputTokens": 15111,
+        "webSearchRequests": 0,
+        "costUSD": 0.1320088,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 247,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 19625,
+    "result": "Seven functions in `langsmith.ts` call `createRunTree`, in nine places. Each call passes a fixed string for `run_type`:\n\n| Function | Line | `run_type` | What the call does |\n|---|---|---|---|\n| `traceTurn` | `langsmith.ts:253` | `\"chain\"` | Opens a standalone turn run |\n| `traceTurn` | `langsmith.ts:307` | `\"llm\"` | Opens the assistant (LLM) run |\n| `traceTurn` | `langsmith.ts:365` | `\"tool\"` | Creates each tool run |\n| `traceTurn` | `langsmith.ts:414` | `\"llm\"` | Completes the assistant run |\n| `traceTurn` | `langsmith.ts:476` | `\"chain\"` | Completes the turn run |\n| `patchTurnRun` | `langsmith.ts:549` | `\"chain\"` | Patches the turn run |\n| `tracePendingSubagents` | `langsmith.ts:931` | `\"tool\"` | Creates a deferred Agent/Task tool run |\n| `traceSubagentChain` | `langsmith.ts:1034` | `\"chain\"` | Creates the subagent chain run |\n| `closeAgentToolRun` | `langsmith.ts:1191` | `\"tool\"` | Closes the Agent tool run |\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 2,
+      "Read": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

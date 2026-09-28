@@ -66,6 +66,10 @@ What passes the hooks unchanged: reads with `offset` or `limit`, files at or und
 
 `code-write` writes a new file from a spec and at least one reference file. With `--target` the file goes to disk and Claude sees only the line count.
 
+## Measured result so far
+
+A 45-session experiment on 28 Sep 2026 ([design](experiments/read-gate/DESIGN.md), [results](experiments/read-gate/RESULTS.md)) found no effect, because the gate never fired. On three tasks over files of 367 to 1,227 lines, Claude Code (Opus 5.5) never tried to read a large file in full. It used Grep and short targeted reads, so cost per task was the same with and without the plugin, and every answer was correct. In one earlier session, where the prompt told Claude to read the file, the block made the session cost more, because Claude worked round it instead of delegating. Tasks that need a whole file understood have not been tested yet.
+
 ## Measuring the savings
 
 Each run records the worker's token counts from the API response and the Claude Code session id as `thread_id`. The langsmith-tracing plugin writes the same `thread_id` on every Claude call, so with both plugins writing to one project, `/langsmith-shunt:savings` joins them.

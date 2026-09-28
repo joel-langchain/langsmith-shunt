@@ -1,0 +1,83 @@
+{
+  "arm": "gate-v1",
+  "task": "cross-file",
+  "rep": 5,
+  "order": 7,
+  "run_id": "gate-v1--cross-file--5--e66b7b54",
+  "plugin_dir": "/private/tmp/claude-501/-Users-joelstrickland-Documents-langchain-work/14cb4b72-5c22-4e65-9a61-19301835cdd5/scratchpad/exp/arm-gate-v1/plugins/langsmith-shunt",
+  "started": 1790604686.953444,
+  "duration_s": 22.0,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "cc2f0246-3e54-410f-b2f8-ec3fff9dafe7",
+    "total_cost_usd": 0.12799200000000002,
+    "num_turns": 5,
+    "usage": {
+      "input_tokens": 8,
+      "cache_creation_input_tokens": 11174,
+      "cache_read_input_tokens": 203450,
+      "output_tokens": 1570,
+      "output_tokens_details": {
+        "thinking_tokens": 133
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 11174
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 986,
+          "cache_read_input_tokens": 53995,
+          "cache_creation_input_tokens": 226,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 226,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 8,
+        "outputTokens": 1570,
+        "cacheReadInputTokens": 203450,
+        "cacheCreationInputTokens": 11174,
+        "webSearchRequests": 0,
+        "costUSD": 0.12799200000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 133,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 21376,
+    "result": "Three of the four files have exported functions. `stop.ts` has none: its only function is `main()` at line 40, which isn't exported.\n\n**langsmith.ts** (13)\n- `initTracing` (line 32)\n- `flushPendingTraces` (async, line 56)\n- `generateDottedOrderSegment` (line 76)\n- `parseDottedOrder` (line 99)\n- `traceTurn` (async, line 188)\n- `turnIdentityFromOpenTurn` (line 578)\n- `completeTurnRun` (async, line 605)\n- `closeTurnRun` (async, line 626)\n- `closeInterruptedTurn` (async, line 643)\n- `tracePendingSubagents` (async, line 828)\n- `traceWorkflowStage` (async, line 1089)\n- `closeAgentToolRun` (async, line 1154)\n\n**transcript.ts** (10)\n- `readTranscript` (line 29)\n- `getTranscriptEndLine` (line 122)\n- `readRuntimeVersion` (line 169)\n- `isHumanMessage` (line 205)\n- `isToolResult` (line 217)\n- `isAssistantMessage` (line 223)\n- `stripModelDateSuffix` (line 228)\n- `resolveProvider` (line 233)\n- `completedToolUseIds` (line 243)\n- `groupIntoTurns` (line 348)\n\n**stop.ts**: none.\n\n**config.ts** (6)\n- `readAnthropicUserId` (line 44)\n- `readLocalUsername` (line 64)\n- `parseRepoName` (line 102)\n- `getRepoName` (line 128)\n- `getGitInfo` (line 161)\n- `loadConfig` (line 199)\n\nNone of the files use `export default` or `export { \u2026 }` forms.\n\n```json\n{\n  \"langsmith.ts\": [\n    \"initTracing\",\n    \"flushPendingTraces\",\n    \"generateDottedOrderSegment\",\n    \"parseDottedOrder\",\n    \"traceTurn\",\n    \"turnIdentityFromOpenTurn\",\n    \"completeTurnRun\",\n    \"closeTurnRun\",\n    \"closeInterruptedTurn\",\n    \"tracePendingSubagents\",\n    \"traceWorkflowStage\",\n    \"closeAgentToolRun\"\n  ],\n  \"transcript.ts\": [\n    \"readTranscript\",\n    \"getTranscriptEndLine\",\n    \"readRuntimeVersion\",\n    \"isHumanMessage\",\n    \"isToolResult\",\n    \"isAssistantMessage\",\n    \"stripModelDateSuffix\",\n    \"resolveProvider\",\n    \"completedToolUseIds\",\n    \"groupIntoTurns\"\n  ],\n  \"stop.ts\": [],\n  \"config.ts\": [\n    \"readAnthropicUserId\",\n    \"readLocalUsername\",\n    \"parseRepoName\",\n    \"getRepoName\",\n    \"getGitInfo\",\n    \"loadConfig\"\n  ]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 3,
+      "Glob": 1
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}

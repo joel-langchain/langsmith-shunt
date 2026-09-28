@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import random
@@ -152,7 +153,8 @@ def run_one(job: dict, args, out_dir: Path) -> dict | None:
         "metrics": transcript_metrics(output.get("session_id", "")) if output.get("session_id") else {},
     }
     if job["task"] == "edit":
-        record["edited_file"] = (work / "langsmith.ts").read_text()
+        edited = (work / "langsmith.ts").read_text()
+        record["edited_file_sha256"] = hashlib.sha256(edited.encode()).hexdigest()
 
     cost = (output.get("total_cost_usd") or 0) + record["metrics"].get("worker_cost_usd", 0)
     with spent_lock:

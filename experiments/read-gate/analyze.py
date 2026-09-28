@@ -9,6 +9,7 @@ Standard library only.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import re
@@ -73,6 +74,8 @@ def f1(found: set, key: set) -> float:
 def grade(record: dict, edit_target: str) -> float:
     task = record["task"]
     if task == "edit":
+        if "edited_file_sha256" in record:
+            return 1.0 if record["edited_file_sha256"] == hashlib.sha256(edit_target.encode()).hexdigest() else 0.0
         return 1.0 if record.get("edited_file") == edit_target else 0.0
     obj = last_json((record.get("claude") or {}).get("result") or "")
     if not isinstance(obj, dict):

@@ -1,0 +1,83 @@
+{
+  "arm": "control",
+  "task": "single-file",
+  "rep": 4,
+  "order": 23,
+  "run_id": "control--single-file--4--5547471d",
+  "plugin_dir": null,
+  "started": 1790604763.163795,
+  "duration_s": 19.4,
+  "exit_code": 0,
+  "stderr_tail": "",
+  "claude": {
+    "session_id": "51f77784-49df-402e-95e7-284af1c00de7",
+    "total_cost_usd": 0.1224594,
+    "num_turns": 4,
+    "usage": {
+      "input_tokens": 6,
+      "cache_creation_input_tokens": 13362,
+      "cache_read_input_tokens": 149327,
+      "output_tokens": 1288,
+      "output_tokens_details": {
+        "thinking_tokens": 176
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 13362
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 577,
+          "cache_read_input_tokens": 53891,
+          "cache_creation_input_tokens": 2518,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 2518,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-opus-5-5[1m]": {
+        "inputTokens": 6,
+        "outputTokens": 1288,
+        "cacheReadInputTokens": 149327,
+        "cacheCreationInputTokens": 13362,
+        "webSearchRequests": 0,
+        "costUSD": 0.1224594,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 176,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "is_error": false,
+    "subtype": "success",
+    "duration_ms": 18727,
+    "result": "Seven functions in `langsmith.ts` call `createRunTree`, making 10 calls in total. I found them by searching for the name and read the less obvious ones in full; none sit inside a nested helper.\n\n| Function | Line | `run_type` | What the call is for |\n|---|---|---|---|\n| `traceTurn` | 247 | `\"chain\"` | Creates the turn run |\n| `traceTurn` | 301 | `\"llm\"` | Creates the assistant run for each LLM call |\n| `traceTurn` | 359 | `\"tool\"` | One run per tool call |\n| `traceTurn` | 409 | `\"llm\"` | Closes out the assistant run |\n| `traceTurn` | 471 | `\"chain\"` | Closes out the turn run, only when `traceTurn` created it itself |\n| `patchTurnRun` | 544 | `\"chain\"` | |\n| `tracePendingSubagents` | 925 | `\"tool\"` | The deferred \"Agent\" tool run |\n| `traceSubagentChain` | 1028 | `\"chain\"` | |\n| `closeAgentToolRun` | 1185 | `\"tool\"` | |\n\nThe mention of `\"tool\"` at line 950 is only a comment, not another call.\n\n```json\n{\n  \"traceTurn\": [\"chain\", \"llm\", \"tool\", \"llm\", \"chain\"],\n  \"patchTurnRun\": [\"chain\"],\n  \"tracePendingSubagents\": [\"tool\"],\n  \"traceSubagentChain\": [\"chain\"],\n  \"closeAgentToolRun\": [\"tool\"]\n}\n```"
+  },
+  "metrics": {
+    "transcript_found": true,
+    "tool_calls": {
+      "Grep": 1,
+      "Read": 2
+    },
+    "bash_commands": [],
+    "blocked": 0,
+    "bulk_reads": 0,
+    "worker_in": 0,
+    "worker_out": 0,
+    "worker_cost_usd": 0.0
+  }
+}
