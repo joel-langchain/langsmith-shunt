@@ -1,5 +1,5 @@
 langsmith-shunt
-Copyright 2026 Joel Strickland
+Copyright 2026 LangChain, Inc.
 
 The langsmith-shunt plugin follows the design of shunt, part of
 spotify/portal-ai-plugins (https://github.com/spotify/portal-ai-plugins),
