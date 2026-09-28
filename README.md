@@ -42,17 +42,23 @@ If you already use LangChain's [langsmith-tracing](https://github.com/langchain-
 
 ## How it works
 
+```mermaid
+flowchart TD
+    claude["Claude Code"] -->|"Read, cat, head, or tail"| hook{"PreToolUse hook<br/>full read of a file<br/>over 350 lines?"}
+    claude -->|"or the bulk-reader<br/>skill directly"| bulk
+    hook -->|"no"| read["The read runs as normal"]
+    hook -->|"yes"| deny["Read denied, with the<br/>bulk-read command"]
+    deny --> bulk["bulk-read script"]
+    bulk -->|"files and question"| gateway["LangSmith LLM Gateway"]
+    gateway --> worker["Cheaper model<br/>(Claude Haiku 4.5)"]
+    worker -->|"short answer"| bulk
+    bulk -->|"only the answer<br/>enters Claude's context"| claude
+    bulk -.->|"hand-off run<br/>token counts, thread_id"| langsmith[("LangSmith project")]
+    claude -.->|"session trace from the<br/>langsmith-tracing plugin"| langsmith
+    langsmith -.-> report["Savings report<br/>joins the two by thread_id"]
 ```
-Claude ── Read big.ts ──► PreToolUse hook ── over 350 lines? ── no ──► Read runs
-                                │
-                               yes: deny, and name the bulk-reader skill
-                                │
-Claude ── bulk-read --question "..." --paths big.ts
-                                │
-                                ├──► worker model via LLM Gateway ──► answer printed for Claude
-                                │
-                                └──► LangSmith run: token counts, file size, thread_id = session
-```
+
+In testing, Claude usually chose the bulk-reader skill without being blocked, because the skill's description matches tasks that need whole files. The hook is the backstop for when Claude, or the prompt, goes for a full read anyway.
 
 There are three layers, from hard to soft. Paths are under `plugins/langsmith-shunt/`.
 
